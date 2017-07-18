@@ -9,10 +9,11 @@ import sys
 import itertools
 import math
 from random import shuffle
-from editdistance import eval
+import editdistance as edt
+import cPickle as pickle
 
 def ed(s1, s2):
-    return eval(s1, s2)
+    return edt.eval(s1, s2)
 
 def out(*strings):
     print strings
@@ -65,12 +66,11 @@ def merge_similar(parents, words):
             stem2 = word_list[j]
             len1 = len(stem)
             len2 = len(stem2)
-            
+    
             # Merge stems which are substrings of each others' start
             # For longer stems also merge when editdistance=1 (SSRI != SNRI)
             if (len1 >= 6 and len2 >= 6 and ed(stem, stem2) == 1) \
             or (stem.startswith(stem2) or stem2.startswith(stem)):
-                #out("merging", stem, "with", stem2)
                 merge_stems(parents, stem, stem2)
                 
 def update_parenthood(parents, grandparents, words):
@@ -88,7 +88,7 @@ def map_abbreviations(grandparents, parents, vocab):
         for stem in grandparents:
             if word.startswith(stem):
                 parents[word] = parents[stem]
-
+                out("Mapping", word, parents[word])
 
 def find_candidates(postCounts, grandparents, parents, data):
     representative_candidates = {}
@@ -169,6 +169,21 @@ def count_associations(keyword, parents, grandparents, postSets):
             counts[parent] = count
     return counts
 
+
+    """ Takes whole vocab and wanted keywords, e.g drugs, and returns sets of words for each keyword """
+def get_baskets(vocab, parents, grandparents):
+    baskets = dict()
+
+    for keyword in grandparents:
+        baskets[keyword] = set()
+
+    for word in vocab:
+        p = parents[word]
+        if p in grandparents:
+            baskets[p].add(word)
+
+    return baskets
+            
 def calculate_bp(grandparents, postSets, counts, postCounts, keyword, number_of_posts, minimum_sample_size_for_found_associations):
     # Bayesian probability: calculate how much 'keyword' increases the prevalence of special words
     bp = {}
@@ -193,15 +208,15 @@ class Associations:
         self.drugs_file = drugs_file
 
     def train(self):
-        with io.open(self.data_file) as file:
+        with open(self.data_file) as file:
             self.data = json.load(file)
-        vocab = set()
+        self.vocab = set()
         self.number_of_posts = 0
         for thread in self.data:
             for post in thread:
                 self.number_of_posts += 1
                 for word in custom_split_stemmed(post):
-                    vocab.add(word)
+                    self.vocab.add(word)
 
         drugs = read_special_words(self.drugs_file)
         symptoms = read_special_words(self.symptoms_file)
@@ -211,7 +226,7 @@ class Associations:
         self.drug_parents = {}
         self.symptom_grandparents = set()
         self.symptom_parents = {}
-        for word in itertools.chain(*[vocab, drugs, symptoms]):
+        for word in itertools.chain(*[self.vocab, drugs, symptoms]):
             # drugs and symptoms contain stemmed words which don't appear in the corpus
             self.drug_parents[word] = word
             self.symptom_parents[word] = word
@@ -224,7 +239,7 @@ class Associations:
         out('Done')
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
-        map_abbreviations(self.drug_grandparents, self.drug_parents, vocab)
+        map_abbreviations(self.drug_grandparents, self.drug_parents, self.vocab)            
 
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
@@ -246,6 +261,10 @@ class Associations:
 
         out("Done")
 
+        out("Collecting baskets")
+        self.drug_baskets = get_baskets(self.vocab, self.drug_parents, self.drug_grandparents)
+        self.symptom_baskets = get_baskets(self.vocab, self.symptom_parents, self.symptom_grandparents)
+        
     def drug_postcount(self,drug):
         return self.drug_postCounts[drug]
 
@@ -253,7 +272,7 @@ class Associations:
         return self.symptom_postCounts[symptom]
 
     # Returns associated (drugs, symptoms)
-    def associated_symptoms(self, keyword, minimum_sample_size_for_found_associations=30):
+    def associated(self, keyword, minimum_sample_size_for_found_associations=1):
         if self.drug_parents[keyword] in self.drug_grandparents:
             out('Keyword recognized as drug', self.drug_representatives[self.drug_parents[keyword]])
             keyword = self.drug_parents[keyword]
@@ -274,8 +293,34 @@ class Associations:
         symptom_bp = calculate_bp(self.symptom_grandparents, selected_postSets, symptom_counts, self.symptom_postCounts, keyword, self.number_of_posts, minimum_sample_size_for_found_associations)
         return (drug_bp, symptom_bp)
 
+if __name__ == "__main__":
+    prefix = "../how-to-get-healthy/"
+    drugs_path = prefix+"word_lists/drugs_stemmed.txt"
+    pickled_path = "associations_object"
 
+    if os.path.isfile(pickled_path):
+        f = open(pickled_path)
+        a = pickle.load(f)
+    else:
+        a = Associations(prefix+"processed_data/data.json", prefix + "word_lists/symptoms_both_ways_stemmed.txt", drugs_path )
+        a.train()
 
-prefix = "../how-to-get-healthy/"
-a = Associations(prefix+"processed_data/data.json", prefix+"word_lists/drugs_stemmed.txt", prefix + "word_lists/symptoms_both_ways_stemmed.txt" )
-a.train()
+        # Pickle entire object for future use
+        f = open("assocations", 'w')
+        pickle.dump(a, f)
+
+    from models import Drug, get_session
+    db_session = get_session()
+
+    for drug in a.drug_grandparents:
+        created_json = dict()
+        print "Processing", drug
+        real_name = a.drug_representatives[drug]
+        associations = a.associated(drug)
+        created_json["associated_drugs"] = associations[0]
+        created_json["associated_symptoms"] = associations[1]
+        created_json["basket"] = list(a.drug_baskets[drug])
+        d = Drug(name=real_name, data=created_json)
+        db_session.add(d)
+        db_session.commit()
+

@@ -1,3 +1,4 @@
 .vscode/*
 *.pyc
 flask/*
+associations_object

@@ -88,7 +88,7 @@ def map_abbreviations(grandparents, parents, vocab):
         for stem in grandparents:
             if word.startswith(stem):
                 parents[word] = parents[stem]
-                out("Mapping", word, parents[word])
+                #out("Mapping", word, parents[word])
 
 def find_candidates(postCounts, grandparents, parents, data):
     representative_candidates = {}
@@ -201,6 +201,20 @@ def calculate_bp(grandparents, postSets, counts, postCounts, keyword, number_of_
         del bp[keyword]
     return bp
 
+def filter_nonexisting_grandparents(parents, grandparents, vocab):
+    # We may have grandparents which do not appear in the data
+    # because the data is lemmatized whereas some drugs/symptoms
+    # may not be lemmatized. This returns a new grandparents
+    # set with only grandparents which appear in the data.
+    found_grandparents = set()
+    for word in vocab:
+        found_grandparents.add(parents[word])
+    filtered_grandparents = set()
+    for candidate in grandparents:
+        if candidate in found_grandparents:
+            filtered_grandparents.add(candidate)
+    return filtered_grandparents
+
 class Associations:
     def __init__(self, data_file, symptoms_file, drugs_file):
         self.data_file = data_file
@@ -237,6 +251,9 @@ class Associations:
         merge_similar(self.symptom_parents, symptoms)
         update_parenthood(self.symptom_parents, self.symptom_grandparents, symptoms)
         out('Done')
+
+        self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
+        self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
         map_abbreviations(self.drug_grandparents, self.drug_parents, self.vocab)            
@@ -306,12 +323,13 @@ if __name__ == "__main__":
         a.train()
 
         # Pickle entire object for future use
-        f = open("assocations", 'w')
+        f = open(pickled_path, 'w')
         pickle.dump(a, f)
 
     from models import Drug, get_session
     db_session = get_session()
 
+    # Associations
     for drug in a.drug_grandparents:
         created_json = dict()
         print "Processing", drug
@@ -323,4 +341,6 @@ if __name__ == "__main__":
         d = Drug(name=real_name, data=created_json)
         db_session.add(d)
         db_session.commit()
+    
+    # Counts
 

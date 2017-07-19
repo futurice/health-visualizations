@@ -17,9 +17,19 @@ def drugs():
     return jsonify([d.name for d in drugs]), 200, { 'ContentType': 'application/json' } 
 
 @app.route("/drugs/<drug>")
-def show(drug):
-    uu = get_session().query(Drug).filter(Drug.name == drug).one()
-    return jsonify(uu.data), 200, CONTENT_TYPE
+def show_drug(drug):
+    res = get_session().query(Drug).filter(Drug.name == drug).one()
+    return jsonify(res.data), 200, CONTENT_TYPE
+
+@app.route("/symptoms")
+def symptoms():
+    symptoms = get_session().query(Symptom).all()
+    return jsonify([s.name for s in symptoms]), 200, { 'ContentType': 'application/json' } 
+
+@app.route("/symptoms/<symptom>")
+def show_symptom(symptom):
+    res = get_session().query(Symptom).filter(Symptom.name == symptom).one()
+    return jsonify(res.data), 200, CONTENT_TYPE
 
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")

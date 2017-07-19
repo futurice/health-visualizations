@@ -9,25 +9,25 @@ from models import get_session
 
 app = Flask(__name__)
 
-session = get_session()
+CONTENT_TYPE = {'ContentType': 'application/json' }
 
 @app.route("/drugs")
 def drugs():
-    drugs = session.query(Drug).all()
+    drugs = get_session().query(Drug).all()
     return jsonify([d.name for d in drugs]), 200, { 'ContentType': 'application/json' } 
 
 @app.route("/drugs/<drug>")
 def show(drug):
-    uu = session.query(Drug).filter(Drug.name == drug).one()
-    return jsonify(uu.data), 200, {'ContentType': 'application/json' } 
+    uu = get_session().query(Drug).filter(Drug.name == drug).one()
+    return jsonify(uu.data), 200, CONTENT_TYPE
 
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")
 def common(resource):
-    if resource == "drugs":
-        return(jsonify(session.query(Drug).order_by(
-                Drug.data[('count')].cast(Integer)).all()
-            )), 200, {'ContentType': 'application/json' } 
+    query = get_session().query(Drug).order_by(Drug.data['postCount'].desc())
+    results = [(drug.name, drug.data['postCount']) for drug in query.all()]
+
+    return jsonify(results), 200, CONTENT_TYPE 
 
 @app.route("/upload", methods=["POST"])
 def upload():
@@ -37,6 +37,7 @@ def upload():
         data = content["data"]
 
         d = Drug(name=name, data=data)
+        session = get_session()
         session.add(d)
         
         try:

@@ -316,6 +316,7 @@ if __name__ == "__main__":
     pickled_path = "associations_object"
 
     if os.path.isfile(pickled_path):
+        print "Loading pickled associations"
         f = open(pickled_path)
         a = pickle.load(f)
     else:
@@ -327,6 +328,7 @@ if __name__ == "__main__":
         pickle.dump(a, f)
 
     from models import Drug, get_session
+    from sqlalchemy.exc import IntegrityError
     db_session = get_session()
 
     # Associations
@@ -335,12 +337,32 @@ if __name__ == "__main__":
         print "Processing", drug
         real_name = a.drug_representatives[drug]
         associations = a.associated(drug)
-        created_json["associated_drugs"] = associations[0]
-        created_json["associated_symptoms"] = associations[1]
-        created_json["basket"] = list(a.drug_baskets[drug])
-        d = Drug(name=real_name, data=created_json)
-        db_session.add(d)
-        db_session.commit()
-    
-    # Counts
+        
+        associated_drugs = dict()
+        associated_symptoms = dict()
 
+        for assoc_drug, value in associations[0].iteritems():
+            rn = a.drug_representatives[assoc_drug]
+            associated_drugs[rn] = value
+
+        for symptom, value in associations[1].iteritems():
+            rn = a.symptom_representatives[symptom]
+            associated_symptoms[rn] = value
+
+        created_json["associated_drugs"] = associated_drugs
+        created_json["associated_symptoms"] = associated_symptoms
+        created_json["basket"] = list(a.drug_baskets[drug])
+
+        post_count = a.drug_postCounts[drug]
+        created_json["postCount"] = post_count
+        
+        if drug == "buran":
+            print created_json
+
+        d = Drug(name=real_name, data=created_json)
+        
+        try:
+            db_session.add(d) 
+            db_session.commit()
+        except IntegrityError:
+            print "Already exists"

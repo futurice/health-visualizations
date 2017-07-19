@@ -12,6 +12,10 @@ from random import shuffle
 import editdistance as edt
 import cPickle as pickle
 
+# For adding to DB
+from models import Drug, Symptom, get_session
+from sqlalchemy.exc import IntegrityError
+
 def ed(s1, s2):
     return edt.eval(s1, s2)
 
@@ -310,6 +314,45 @@ class Associations:
         symptom_bp = calculate_bp(self.symptom_grandparents, selected_postSets, symptom_counts, self.symptom_postCounts, keyword, self.number_of_posts, minimum_sample_size_for_found_associations)
         return (drug_bp, symptom_bp)
 
+""" Create associations JSON for database for resource e.g "drugs" """
+def create_json(resource_name, grandparents, baskets, representatives,  post_counts):
+    db_session = get_session()
+
+    for resource in grandparents:
+        created_json = dict()
+        print "Processing", resource
+        real_name = representatives[resource]
+        associations = a.associated(resource)
+        
+        associated_drugs = dict()
+        associated_symptoms = dict()
+
+        for assoc_drug, value in associations[0].iteritems():
+            rn = a.drug_representatives[assoc_drug]
+            associated_drugs[rn] = value
+
+        for symptom, value in associations[1].iteritems():
+            rn = a.symptom_representatives[symptom]
+            associated_symptoms[rn] = value
+
+        created_json["associated_drugs"] = associated_drugs
+        created_json["associated_symptoms"] = associated_symptoms
+        created_json["basket"] = list(baskets[resource])
+
+        post_count = post_counts[resource]
+        created_json["postCount"] = post_count
+
+        if resource_name == "drugs":
+            res = Drug(name=real_name, data=created_json)
+        elif resource_name == "symptoms":
+            res = Symptom(name = real_name, data=created_json)
+        
+        try:
+            db_session.add(res) 
+            db_session.commit()
+        except IntegrityError:
+            print "Already exists"
+
 if __name__ == "__main__":
     prefix = "../how-to-get-healthy/"
     drugs_path = prefix+"word_lists/drugs_stemmed.txt"
@@ -327,42 +370,7 @@ if __name__ == "__main__":
         f = open(pickled_path, 'w')
         pickle.dump(a, f)
 
-    from models import Drug, get_session
-    from sqlalchemy.exc import IntegrityError
-    db_session = get_session()
-
     # Associations
-    for drug in a.drug_grandparents:
-        created_json = dict()
-        print "Processing", drug
-        real_name = a.drug_representatives[drug]
-        associations = a.associated(drug)
-        
-        associated_drugs = dict()
-        associated_symptoms = dict()
-
-        for assoc_drug, value in associations[0].iteritems():
-            rn = a.drug_representatives[assoc_drug]
-            associated_drugs[rn] = value
-
-        for symptom, value in associations[1].iteritems():
-            rn = a.symptom_representatives[symptom]
-            associated_symptoms[rn] = value
-
-        created_json["associated_drugs"] = associated_drugs
-        created_json["associated_symptoms"] = associated_symptoms
-        created_json["basket"] = list(a.drug_baskets[drug])
-
-        post_count = a.drug_postCounts[drug]
-        created_json["postCount"] = post_count
-        
-        if drug == "buran":
-            print created_json
-
-        d = Drug(name=real_name, data=created_json)
-        
-        try:
-            db_session.add(d) 
-            db_session.commit()
-        except IntegrityError:
-            print "Already exists"
+    create_json("symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_postCounts)
+    create_json("drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_postCounts)
+    

@@ -1,5 +1,5 @@
 from flask import Flask, jsonify, json, request
-from models import Drug
+from models import Drug, Symptom
 from sqlalchemy.ext.declarative import declarative_base  
 from sqlalchemy.orm import sessionmaker
 import sqlalchemy
@@ -24,10 +24,14 @@ def show(drug):
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")
 def common(resource):
-    query = get_session().query(Drug).order_by(Drug.data['postCount'].desc())
-    results = [(drug.name, drug.data['postCount']) for drug in query.all()]
-
-    return jsonify(results), 200, CONTENT_TYPE 
+    if resource == "drugs":
+        query = get_session().query(Drug).order_by(Drug.data['postCount'].desc())
+        results = [(drug.name, drug.data['postCount']) for drug in query.all()]
+        return jsonify(results), 200, CONTENT_TYPE 
+    elif resource == "symptoms":
+        query = get_session().query(Symptom).order_by(Symptom.data['postCount'].desc())
+        results = [(symptom.name, symptom.data['postCount']) for symptom in query.all()]
+        return jsonify(results), 200, CONTENT_TYPE 
 
 @app.route("/upload", methods=["POST"])
 def upload():

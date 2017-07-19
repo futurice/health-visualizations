@@ -27,5 +27,11 @@ class Drug(Base):
     name = Column(Text, unique=True)
     data = Column(JSONB)
 
+class Symptom(Base):
+    __tablename__ = 'symptoms'
+    id = Column(Integer, primary_key=True)
+    name = Column(Text, unique=True)
+    data = Column(JSONB) 
+
 if __name__ == "__main__":
     Base.metadata.create_all(engine)

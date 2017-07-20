@@ -226,6 +226,7 @@ class Associations:
         self.drugs_file = drugs_file
 
     def train(self):
+        out('Producing associations object...')
         with open(self.data_file) as file:
             self.data = json.load(file)
         self.vocab = set()
@@ -235,6 +236,7 @@ class Associations:
                 self.number_of_posts += 1
                 for word in custom_split_stemmed(post):
                     self.vocab.add(word)
+        out('Part 0 done.')
 
         drugs = read_special_words(self.drugs_file)
         symptoms = read_special_words(self.symptoms_file)
@@ -254,7 +256,7 @@ class Associations:
         update_parenthood(self.drug_parents, self.drug_grandparents, drugs)
         merge_similar(self.symptom_parents, symptoms)
         update_parenthood(self.symptom_parents, self.symptom_grandparents, symptoms)
-        out('Done')
+        out('Part 1 done: merged similar special words')
 
         self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
         self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
@@ -265,8 +267,7 @@ class Associations:
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
         #map_abbreviations(self.symptom_grandparents, self.symptom_grandparents)
-
-        out('Done')
+        out('Part 2 done: merged full vocabulary')
 
         self.drug_postCounts = {}
         drug_rep_candidates = find_candidates(self.drug_postCounts, self.drug_grandparents, self.drug_parents, self.data)
@@ -274,17 +275,15 @@ class Associations:
         self.symptom_postCounts = {}
         symptom_rep_candidates = find_candidates(self.symptom_postCounts, self.symptom_grandparents, self.symptom_parents, self.data)
         self.symptom_representatives = find_representatives(symptom_rep_candidates, self.symptom_grandparents)
-
-        out('Done')
+        out('Part 3 done: postcounts and representatives')
 
         self.drug_postSets = collect_postSets(self.drug_parents, self.drug_grandparents, self.data)
         self.symptom_postSets = collect_postSets(self.symptom_parents, self.symptom_grandparents, self.data)
+        out("Part 4 done: collected postsets")
 
-        out("Done")
-
-        out("Collecting baskets")
         self.drug_baskets = get_baskets(self.vocab, self.drug_parents, self.drug_grandparents)
         self.symptom_baskets = get_baskets(self.vocab, self.symptom_parents, self.symptom_grandparents)
+        out("Part 5 done: collected baskets")
 
         # Find dosage information
         if not 'drug_dosages' in locals():
@@ -358,8 +357,11 @@ def create_json(resource_name, grandparents, baskets, representatives,  post_cou
             print "Already exists"
 
 if __name__ == "__main__":
-    prefix = "../how-to-get-healthy/"
-    drugs_path = prefix+"word_lists/drugs_stemmed.txt"
+    processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
+    word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
+    data_json_path = os.path.join(processed_data_folder, 'data.json')
+    drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
+    symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
     pickled_path = "associations_object"
 
     if os.path.isfile(pickled_path):
@@ -367,7 +369,7 @@ if __name__ == "__main__":
         f = open(pickled_path)
         a = pickle.load(f)
     else:
-        a = Associations(prefix+"processed_data/data.json", prefix + "word_lists/symptoms_both_ways_stemmed.txt", drugs_path )
+        a = Associations(data_json_path, symptom_path, drugs_path)
         a.train()
 
         # Pickle entire object for future use

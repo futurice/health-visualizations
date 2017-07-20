@@ -8,8 +8,15 @@ from sqlalchemy.orm import sessionmaker
 import os 
 
 PSQL_USERNAME = os.environ['PSQL_USERNAME']
+
+try: # added new env variable. try-except is here temporarily so that this commit doesn't break anything.
+    PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
+except:
+    PSQL_PASSWORD = PSQL_USERNAME
+
 PSQL_DB = os.environ['PSQL_DB']
-connection_string = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_USERNAME + '@localhost:5432/' + PSQL_DB
+
+connection_string = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
 db = sqlalchemy.create_engine(connection_string)  
 engine = db.connect()  
 meta = sqlalchemy.MetaData(engine)  

@@ -1,0 +1,4 @@
+flask
+sqlalchemy
+sudo apt-get install python-psycopg2
+pip install psycopg2

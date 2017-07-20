@@ -3,7 +3,6 @@ import json
 import re
 import io
 import operator
-import numpy as np
 import os
 import sys
 import itertools
@@ -11,6 +10,7 @@ import math
 from random import shuffle
 import editdistance as edt
 import cPickle as pickle
+import dosages 
 
 # For adding to DB
 from models import Drug, Symptom, get_session
@@ -285,12 +285,11 @@ class Associations:
         out("Collecting baskets")
         self.drug_baskets = get_baskets(self.vocab, self.drug_parents, self.drug_grandparents)
         self.symptom_baskets = get_baskets(self.vocab, self.symptom_parents, self.symptom_grandparents)
-        
-    def drug_postcount(self,drug):
-        return self.drug_postCounts[drug]
 
-    def symptom_postcount(self, symptom):
-        return self.symptom_postCounts[symptom]
+        # Find dosage information
+        if not 'drug_dosages' in locals():
+            d = dosages.Dosages(self.data, self.drug_parents, self.drug_grandparents, self.drug_representatives)
+            self.drug_dosages = d.train()
 
     # Returns associated (drugs, symptoms)
     def associated(self, keyword, minimum_sample_size_for_found_associations=1):
@@ -343,6 +342,10 @@ def create_json(resource_name, grandparents, baskets, representatives,  post_cou
         created_json["postCount"] = post_count
 
         if resource_name == "drugs":
+            if real_name in a.drug_dosages:
+                created_json["dosages"] = a.drug_dosages[real_name]
+            else:
+                created_json["dosages"] = {}
             res = Drug(name=real_name, data=created_json)
         elif resource_name == "symptoms":
             res = Symptom(name = real_name, data=created_json)
@@ -351,6 +354,7 @@ def create_json(resource_name, grandparents, baskets, representatives,  post_cou
             db_session.add(res) 
             db_session.commit()
         except IntegrityError:
+            db_session = get_session()
             print "Already exists"
 
 if __name__ == "__main__":
@@ -369,7 +373,7 @@ if __name__ == "__main__":
         # Pickle entire object for future use
         f = open(pickled_path, 'w')
         pickle.dump(a, f)
-
+        
     # Associations
     create_json("symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_postCounts)
     create_json("drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_postCounts)

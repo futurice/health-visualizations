@@ -6,8 +6,10 @@ import sqlalchemy
 from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
 from models import get_session
+from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+CORS(app)
 
 CONTENT_TYPE = {'ContentType': 'application/json' }
 

@@ -291,7 +291,7 @@ class Associations:
             d = dosages.Dosages(self.data, self.drug_parents, self.drug_grandparents, self.drug_representatives)
             self.drug_dosages = d.train()
 
-    # Returns associated (drugs, symptoms)
+    # Returns associated (drugs, drug_counts, symptoms, symptom_counts)
     def associated(self, keyword, minimum_sample_size_for_found_associations=1):
         if self.drug_parents[keyword] in self.drug_grandparents:
             out('Keyword recognized as drug', self.drug_representatives[self.drug_parents[keyword]])
@@ -311,7 +311,7 @@ class Associations:
 
         drug_bp = calculate_bp(self.drug_grandparents, selected_postSets, drug_counts, self.drug_postCounts, keyword, self.number_of_posts, minimum_sample_size_for_found_associations)
         symptom_bp = calculate_bp(self.symptom_grandparents, selected_postSets, symptom_counts, self.symptom_postCounts, keyword, self.number_of_posts, minimum_sample_size_for_found_associations)
-        return (drug_bp, symptom_bp)
+        return (drug_bp, drug_counts, symptom_bp, symptom_counts)
 
 """ Create associations JSON for database for resource e.g "drugs" """
 def create_json(resource_name, grandparents, baskets, representatives,  post_counts):
@@ -321,18 +321,25 @@ def create_json(resource_name, grandparents, baskets, representatives,  post_cou
         created_json = dict()
         print "Processing", resource
         real_name = representatives[resource]
-        associations = a.associated(resource)
+        drug_assoc, drug_counts, symptom_assoc, symptom_counts = a.associated(resource)
         
         associated_drugs = dict()
         associated_symptoms = dict()
 
-        for assoc_drug, value in associations[0].iteritems():
+        for assoc_drug, value in drug_assoc.iteritems():
             rn = a.drug_representatives[assoc_drug]
-            associated_drugs[rn] = value
 
-        for symptom, value in associations[1].iteritems():
-            rn = a.symptom_representatives[symptom]
-            associated_symptoms[rn] = value
+            associated_drugs[rn] = {
+                "value": value,
+                "count": drug_counts[assoc_drug]
+            }
+
+        for assoc_symptom, value in symptom_assoc.iteritems():
+            rn = a.symptom_representatives[assoc_symptom]
+            associated_symptoms[rn] = {
+                "value": value,
+                "count": symptom_counts[assoc_symptom]
+            }
 
         created_json["associated_drugs"] = associated_drugs
         created_json["associated_symptoms"] = associated_symptoms

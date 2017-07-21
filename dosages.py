@@ -103,6 +103,7 @@ class Dosages:
                             mentions[closest_drug_name].setdefault(word, [])
                             mentions[closest_drug_name][word].append(p_post)
 
+        print "Dosages done."
         return self.drug_dosages
 if __name__ == "__main__":
     pass

@@ -16,7 +16,7 @@ CONTENT_TYPE = {'ContentType': 'application/json' }
 @app.route("/drugs")
 def drugs():
     drugs = get_session().query(Drug).all()
-    return jsonify([d.name for d in drugs]), 200, { 'ContentType': 'application/json' } 
+    return jsonify([d.name for d in drugs]), 200, CONTENT_TYPE
 
 @app.route("/drugs/<drug>")
 def show_drug(drug):
@@ -26,7 +26,7 @@ def show_drug(drug):
 @app.route("/symptoms")
 def symptoms():
     symptoms = get_session().query(Symptom).all()
-    return jsonify([s.name for s in symptoms]), 200, { 'ContentType': 'application/json' } 
+    return jsonify([s.name for s in symptoms]), 200, CONTENT_TYPE
 
 @app.route("/symptoms/<symptom>")
 def show_symptom(symptom):
@@ -45,6 +45,7 @@ def common(resource):
         results = [(symptom.name, symptom.data['postCount']) for symptom in query.all()]
         return jsonify(results), 200, CONTENT_TYPE 
 
+'''
 @app.route("/upload", methods=["POST"])
 def upload():
     if request.method == 'POST':
@@ -61,3 +62,4 @@ def upload():
             return ("success", 200)
         except IntegrityError:
             return ("already exists", 400)
+'''

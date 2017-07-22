@@ -30,12 +30,7 @@ def get_session():
 
 Base = declarative_base()
 
-
-bridge_dosage_quotes = Table('bridge_dosage_quotes', Base.metadata,
-                          Column('post_id', Integer, ForeignKey('posts.id')),
-                          Column('drug_id', Integer, ForeignKey('drugs.id')),
-                          Column('dosage_mg', Integer))
-
+'''
 bridge_drug_posts = Table('bridge_drug_posts', Base.metadata,
                           Column('post_id', Integer, ForeignKey('posts.id')),
                           Column('drug_id', Integer, ForeignKey('drugs.id')))
@@ -43,30 +38,45 @@ bridge_drug_posts = Table('bridge_drug_posts', Base.metadata,
 bridge_symptom_posts = Table('bridge_symptom_posts', Base.metadata,
                           Column('post_id', Integer, ForeignKey('posts.id')),
                           Column('symptom_id', Integer, ForeignKey('symptoms.id')))
+'''
+
 
 class Post(Base):
     __tablename__ = 'posts'
+
     id = Column(Integer, primary_key=True)
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
-    ref_dosages = relationship("Drug", secondary=bridge_dosage_quotes, back_populates="ref_dosages")
-    ref_drug_posts = relationship("Drug", secondary=bridge_drug_posts, back_populates="ref_posts")
-    ref_symptom_posts = relationship("Symptom", secondary=bridge_symptom_posts, back_populates="ref_posts")
+    #ref_dosages = relationship("Drug", secondary=bridge_dosage_quotes, back_populates="ref_dosages")
+    #ref_drug_posts = relationship("Drug", secondary=bridge_drug_posts, back_populates="ref_posts")
+    #ref_symptom_posts = relationship("Symptom", secondary=bridge_symptom_posts, back_populates="ref_posts")
 
 class Drug(Base):
     __tablename__ = 'drugs'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
-    ref_dosages = relationship("Post", secondary=bridge_dosage_quotes, back_populates="ref_dosages")
-    ref_posts = relationship("Post", secondary=bridge_drug_posts, back_populates="ref_drug_posts")
+
+    #ref_dosages = relationship("Post", secondary=bridge_dosage_quotes, back_populates="ref_dosages")
+    #ref_posts = relationship("Post", secondary=bridge_drug_posts, back_populates="ref_drug_posts")
 
 class Symptom(Base):
     __tablename__ = 'symptoms'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
-    ref_posts = relationship("Post", secondary=bridge_symptom_posts, back_populates="ref_symptom_posts")
+    #ref_posts = relationship("Post", secondary=bridge_symptom_posts, back_populates="ref_symptom_posts")
+
+class Bridge_Dosage_Quotes(Base):
+    __tablename__ = 'bridge_dosage_quotes'
+
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('posts.id'))
+    drug_id = Column(Integer, ForeignKey('drugs.id'))
+    dosage_mg = Column(Integer)
+
+    ref_post = relationship(Post, backref="bridge_dosage_quotes")
+    ref_drug = relationship(Drug, backref="bridge_dosage_quotes")
 
 
 
@@ -76,5 +86,7 @@ if __name__ == "__main__":
         meta.drop_all()
     else:
         print "Ok, we can try to insert new tables, but existing tables won't be touched."
+        for drug in get_session().query(Post):
+            print drug.lemmatized
 
     Base.metadata.create_all(engine)

@@ -226,9 +226,8 @@ class Associations:
         self.symptoms_file = symptoms_file
         self.drugs_file = drugs_file
 
-    def train(self):
+    def train(self, db):
         out('Producing associations object...')
-        db = get_session()
 
         self.vocab = set()
         self.number_of_posts = db.query(Post).count()
@@ -313,8 +312,7 @@ class Associations:
         return (drug_bp, drug_counts, symptom_bp, symptom_counts)
 
 """ Create associations JSON for database for resource e.g "drugs" """
-def create_json(resource_name, grandparents, baskets, representatives,  post_counts):
-    db_session = get_session()
+def create_json(db, resource_name, grandparents, baskets, representatives,  post_counts):
 
     for resource in grandparents:
         created_json = dict()
@@ -359,10 +357,9 @@ def create_json(resource_name, grandparents, baskets, representatives,  post_cou
         elif resource_name == "symptoms":
             res = Symptom(name = real_name, data=created_json)
         try:
-            db_session.add(res) 
-            db_session.commit()
+            db.add(res)
+            db.commit()
         except IntegrityError:
-            db_session = get_session()
             print "Already exists"
 
 
@@ -382,6 +379,7 @@ def insert_posts_into_db(data_json_path):
 
 if __name__ == "__main__":
     db = get_session()
+
     processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
     word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
     data_json_path = os.path.join(processed_data_folder, 'data.json')
@@ -398,15 +396,18 @@ if __name__ == "__main__":
         a = pickle.load(f)
     else:'''
     a = Associations(data_json_path, symptom_path, drugs_path)
-    a.train()
+    a.train(db)
 
     # Pickle entire object for future use
     f = open(pickled_path, 'w')
     pickle.dump(a, f)
         
     # Associations
-    create_json("symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_postCounts)
-    create_json("drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_postCounts)
+    create_json(db, "symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_postCounts)
+    create_json(db, "drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_postCounts)
+
+    for drug in db.query(Drug):
+        print drug.name
 
     # Dosages
     a.calculate_dosages(db)

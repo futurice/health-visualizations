@@ -5,7 +5,7 @@ import editdistance as ed
 import re
 import time
 import associations
-from models import Post, Drug, bridge_dosage_quotes
+from models import Post, Drug, Bridge_Dosage_Quotes
 from progress_indicator import Progress_indicator
 
 
@@ -111,11 +111,13 @@ class Dosages:
                     dosage_value = int(dosage.split("mg")[0])
                     if dosage_value > 4000:
                         print 'Huge dosage value from', word
-                    link = bridge_dosage_quotes(post_id=post_id, drug_id=drug_id, dosage=dosage_value)
+                    link = Bridge_Dosage_Quotes(post_id=post_id, drug_id=drug_id, dosage_mg=dosage_value)
                     db.add(link)
                     db.commit()
 
         print "Dosages done."
+        for bridge in db.query(Bridge_Dosage_Quotes):
+            print bridge.dosage_mg
         raise
         return self.drug_dosages
 if __name__ == "__main__":

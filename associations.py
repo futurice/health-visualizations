@@ -13,7 +13,7 @@ import cPickle as pickle
 import dosages 
 
 # For adding to DB
-from models import Drug, Symptom, Post, get_session
+from models import Drug, Symptom, Post, get_session, Bridge_Drug_Post, Bridge_Symptom_Post
 from sqlalchemy.exc import IntegrityError
 
 from progress_indicator import Progress_indicator
@@ -316,7 +316,6 @@ def create_json(db, resource_name, grandparents, baskets, representatives,  post
 
     for resource in grandparents:
         created_json = dict()
-        print "Processing", resource
         real_name = representatives[resource]
         drug_assoc, drug_counts, symptom_assoc, symptom_counts = a.associated(resource)
         
@@ -380,6 +379,9 @@ def insert_posts_into_db(data_json_path):
 if __name__ == "__main__":
     db = get_session()
 
+    for drug in db.query(Drug):
+        print drug.name, drug.data
+
     processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
     word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
     data_json_path = os.path.join(processed_data_folder, 'data.json')
@@ -411,3 +413,14 @@ if __name__ == "__main__":
 
     # Dosages
     a.calculate_dosages(db)
+
+    # Postset bridges to db
+    for grandparent in a.drug_postSets:
+        drug = db.query(Drug).filter(Drug.name == a.drug_representatives[grandparent]).one()
+        for post in a.drug_postSets[grandparent]:
+            db.add(Bridge_Drug_Post(post_id=post.id, drug_id=drug.id))
+    for grandparent in a.symptom_postSets:
+        symptom = db.query(Symptom).filter(Symptom.name == a.symptom_representatives[grandparent]).one()
+        for post in a.symptom_postSets[grandparent]:
+            db.add(Bridge_Symptom_Post(post_id=post.id, symptom_id=symptom.id))
+    db.commit()

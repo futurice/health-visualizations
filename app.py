@@ -5,7 +5,7 @@ from sqlalchemy.orm import sessionmaker
 import sqlalchemy
 from sqlalchemy import Integer
 from sqlalchemy.exc import IntegrityError
-from models import get_session
+from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
@@ -33,6 +33,13 @@ def show_symptom(symptom):
     res = get_session().query(Symptom).filter(Symptom.name == symptom).one()
     return jsonify(res.data), 200, CONTENT_TYPE
 
+'''
+@app.route("/dosage_quotes/<drug>/<dosage>")
+def dosage_quotes(drug, dosage):
+    id_pairs = get_session().query(Bridge_Dosage_Quote).filter(Symptom.name == symptom)
+    return jsonify(res.data), 200, CONTENT_TYPE
+'''
+
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")
 def common(resource):
@@ -43,7 +50,7 @@ def common(resource):
     elif resource == "symptoms":
         query = get_session().query(Symptom).order_by(Symptom.data['postCount'].desc())
         results = [(symptom.name, symptom.data['postCount']) for symptom in query.all()]
-        return jsonify(results), 200, CONTENT_TYPE 
+        return jsonify(results), 200, CONTENT_TYPE
 
 '''
 @app.route("/upload", methods=["POST"])

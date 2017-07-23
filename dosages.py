@@ -5,8 +5,10 @@ import editdistance as ed
 import re
 import time
 import associations
-from models import Post, Drug, Bridge_Dosage_Quotes
+import random
+from models import Post, Drug, Bridge_Dosage_Quote
 from progress_indicator import Progress_indicator
+from sqlalchemy.orm.attributes import flag_modified
 
 
 def is_drug(word, drug_parents, drug_grandparents):
@@ -79,10 +81,11 @@ class Dosages:
 
         print "Finding drug dosages"
 
-        # Collect drug id's for fast referencing
-        drug_ids = {}
+        # Collect drugs for fast referencing, initialize dicts
+        drugs = {}
         for drug in db.query(Drug):
-            drug_ids[drug.name] = drug.id
+            drugs[drug.name] = drug
+            self.drug_dosages[drug.name] = dict()
 
         progress_indicator = Progress_indicator(db.query(Post).count())
         for post in db.query(Post):
@@ -100,26 +103,28 @@ class Dosages:
                         continue
                     closest_drug_name = self.drug_representatives[closest_drug_name]
 
-                    if closest_drug_name not in self.drug_dosages:
-                        self.drug_dosages[closest_drug_name] = dict()
                     if dosage not in self.drug_dosages[closest_drug_name]:
                         self.drug_dosages[closest_drug_name][dosage] = 1
                     else:
                         self.drug_dosages[closest_drug_name][dosage] += 1
 
-                    drug_id = drug_ids[closest_drug_name]
+                    drug = drugs[closest_drug_name]
                     dosage_value = int(dosage.split("mg")[0])
                     if dosage_value > 4000:
                         print 'Huge dosage value from', word
-                    link = Bridge_Dosage_Quotes(post_id=post_id, drug_id=drug_id, dosage_mg=dosage_value)
+                    link = Bridge_Dosage_Quote(post_id=post_id, drug_id=drug.id, dosage_mg=dosage_value)
                     db.add(link)
                     db.commit()
 
+
+        for drug in db.query(Drug):
+            drug.data["dosages"] = self.drug_dosages[drug.name]
+            # Fix a persistence problem (make SQLAlchemy understand that the JSON field is updated.)
+            flag_modified(drug, "data")
+        db.commit()
+
         print "Dosages done."
-        for bridge in db.query(Bridge_Dosage_Quotes):
-            print bridge.dosage_mg
-        raise
-        return self.drug_dosages
+
 if __name__ == "__main__":
     pass
 

@@ -7,6 +7,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
+
 import os 
 
 PSQL_USERNAME = os.environ['PSQL_USERNAME']
@@ -23,22 +24,14 @@ db = sqlalchemy.create_engine(connection_string)
 engine = db.connect()  
 meta = sqlalchemy.MetaData(engine)  
 
-def get_session():    
+def get_session():
+    # This should be called only once! Persistence problems otherwise.
+    # TODO: make into singleton?
     SessionFactory = sessionmaker(engine) 
     session = SessionFactory()
     return session
 
 Base = declarative_base()
-
-'''
-bridge_drug_posts = Table('bridge_drug_posts', Base.metadata,
-                          Column('post_id', Integer, ForeignKey('posts.id')),
-                          Column('drug_id', Integer, ForeignKey('drugs.id')))
-
-bridge_symptom_posts = Table('bridge_symptom_posts', Base.metadata,
-                          Column('post_id', Integer, ForeignKey('posts.id')),
-                          Column('symptom_id', Integer, ForeignKey('symptoms.id')))
-'''
 
 
 class Post(Base):
@@ -47,9 +40,6 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
-    #ref_dosages = relationship("Drug", secondary=bridge_dosage_quotes, back_populates="ref_dosages")
-    #ref_drug_posts = relationship("Drug", secondary=bridge_drug_posts, back_populates="ref_posts")
-    #ref_symptom_posts = relationship("Symptom", secondary=bridge_symptom_posts, back_populates="ref_posts")
 
 class Drug(Base):
     __tablename__ = 'drugs'
@@ -57,17 +47,13 @@ class Drug(Base):
     name = Column(Text, unique=True)
     data = Column(JSONB)
 
-    #ref_dosages = relationship("Post", secondary=bridge_dosage_quotes, back_populates="ref_dosages")
-    #ref_posts = relationship("Post", secondary=bridge_drug_posts, back_populates="ref_drug_posts")
-
 class Symptom(Base):
     __tablename__ = 'symptoms'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
-    #ref_posts = relationship("Post", secondary=bridge_symptom_posts, back_populates="ref_symptom_posts")
 
-class Bridge_Dosage_Quotes(Base):
+class Bridge_Dosage_Quote(Base):
     __tablename__ = 'bridge_dosage_quotes'
 
     id = Column(Integer, primary_key=True)
@@ -77,6 +63,27 @@ class Bridge_Dosage_Quotes(Base):
 
     ref_post = relationship(Post, backref="bridge_dosage_quotes")
     ref_drug = relationship(Drug, backref="bridge_dosage_quotes")
+
+class Bridge_Drug_Post(Base):
+    __tablename__ = 'bridge_drug_posts'
+
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('posts.id'))
+    drug_id = Column(Integer, ForeignKey('drugs.id'))
+
+    ref_post = relationship(Post, backref="bridge_drug_posts")
+    ref_drug = relationship(Drug, backref="bridge_drug_posts")
+
+
+class Bridge_Symptom_Post(Base):
+    __tablename__ = 'bridge_symptom_posts'
+
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('posts.id'))
+    symptom_id = Column(Integer, ForeignKey('symptoms.id'))
+
+    ref_post = relationship(Post, backref="bridge_symptom_posts")
+    ref_symptom = relationship(Symptom, backref="bridge_symptom_posts")
 
 
 

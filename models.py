@@ -22,7 +22,10 @@ PSQL_DB = os.environ['PSQL_DB']
 connection_string = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
 db = sqlalchemy.create_engine(connection_string)  
 engine = db.connect()  
-meta = sqlalchemy.MetaData(engine)  
+meta = sqlalchemy.MetaData(engine)
+
+def get_db():
+    return db
 
 def get_session():
     # This should be called only once! Persistence problems otherwise.

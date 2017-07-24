@@ -1,3 +1,4 @@
+import csv
 import json
 import io
 import os
@@ -76,10 +77,15 @@ class Dosages:
         self.drug_representatives = drug_representatives
 
     def train(self, db):
-        # Collects the amount of times a dose has been mentioned for each drug 
-        self.drug_dosages = dict()
+        # Collects the amount of times a dose has been mentioned for each drug
 
         print "Finding drug dosages"
+        self.drug_dosages = dict()
+
+        # Inserting one at a time is too slow, instead we'll write to CSV and copy CSV to Postgres.
+        csv_file_path = os.path.abspath('/tmp/temp2.csv')
+
+
 
         # Collect drugs for fast referencing, initialize dicts
         drugs = {}
@@ -87,35 +93,46 @@ class Dosages:
             drugs[drug.name] = drug
             self.drug_dosages[drug.name] = dict()
 
-        progress_indicator = Progress_indicator(db.query(Post).count())
-        for post in db.query(Post):
-            progress_indicator.tick()
+        with open(csv_file_path, 'wb') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
+            csv_writer.writerow(['id', 'post_id', 'drug_id', 'dosage_mg'])
+            next_free_id = 1
+            progress_indicator = Progress_indicator(db.query(Post).count())
+            for post in db.query(Post):
+                progress_indicator.tick()
 
-            post_id = post.id
-            post = associations.custom_split(post.lemmatized)
-            p_post = preprocess_post(post)
+                post_id = post.id
+                p_post = preprocess_post(associations.custom_split(post.lemmatized))
 
-            for idx, word in enumerate(p_post):
-                if is_dosage(word):
-                    closest_drug_name = closest_drug(p_post, idx, self.drug_parents, self.drug_grandparents)
-                    dosage = word
-                    if not closest_drug_name:
-                        continue
-                    closest_drug_name = self.drug_representatives[closest_drug_name]
+                for idx, word in enumerate(p_post):
+                    if is_dosage(word):
+                        closest_drug_name = closest_drug(p_post, idx, self.drug_parents, self.drug_grandparents)
+                        dosage = word
+                        if not closest_drug_name:
+                            continue
+                        closest_drug_name = self.drug_representatives[closest_drug_name]
 
-                    if dosage not in self.drug_dosages[closest_drug_name]:
-                        self.drug_dosages[closest_drug_name][dosage] = 1
-                    else:
-                        self.drug_dosages[closest_drug_name][dosage] += 1
+                        if dosage not in self.drug_dosages[closest_drug_name]:
+                            self.drug_dosages[closest_drug_name][dosage] = 1
+                        else:
+                            self.drug_dosages[closest_drug_name][dosage] += 1
 
-                    drug = drugs[closest_drug_name]
-                    dosage_value = int(dosage.split("mg")[0])
-                    if dosage_value > 4000:
-                        print 'Huge dosage value from', word
-                    link = Bridge_Dosage_Quote(post_id=post_id, drug_id=drug.id, dosage_mg=dosage_value)
-                    db.add(link)
-                    db.commit()
+                        drug = drugs[closest_drug_name]
+                        dosage_value = int(dosage.split("mg")[0])
+                        if dosage_value > 10000:
+                            # We don't believe anyone takes more than 10g of a medicine at once.
+                            continue
 
+                        # This is too slow, write to CSV instead and copy CSV to Postgres
+                        #link = Bridge_Dosage_Quote(post_id=post_id, drug_id=drug.id, dosage_mg=dosage_value)
+                        #db.add(link)
+
+                        csv_writer.writerow(
+                            [next_free_id, post_id, drug.id, dosage_value])
+                        next_free_id += 1
+
+        db.execute("COPY bridge_dosage_quotes FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
+        db.commit()
 
         for drug in db.query(Drug):
             drug.data["dosages"] = self.drug_dosages[drug.name]

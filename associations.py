@@ -7,13 +7,14 @@ import os
 import sys
 import itertools
 import math
+import csv
 from random import shuffle
 import editdistance as edt
 import cPickle as pickle
 import dosages 
 
 # For adding to DB
-from models import Drug, Symptom, Post, get_session, Bridge_Drug_Post, Bridge_Symptom_Post
+from models import Drug, Symptom, Post, get_session, Bridge_Drug_Post, Bridge_Symptom_Post, get_db
 from sqlalchemy.exc import IntegrityError
 
 from progress_indicator import Progress_indicator
@@ -362,25 +363,47 @@ def create_json(db, resource_name, grandparents, baskets, representatives,  post
             print "Already exists"
 
 
-
-def insert_posts_into_db(data_json_path):
-    db = get_session()
+def insert_posts_into_db(db, data_json_path):
+    print 'Loading', data_json_path
     with open(data_json_path) as file:
         data = json.load(file)
+    print 'Done.'
     progress_indicator = Progress_indicator(len(data))
-    for thread in data:
-        progress_indicator.tick()
-        for post in thread:
-            original_post = post.split('~')[0]
-            lemmatized_post = post.split('~')[1]
-            db.add(Post(original=original_post, lemmatized=lemmatized_post))
-            db.commit()
+    csv_file_path = os.path.abspath('/tmp/temp.csv')
+    with open(csv_file_path, 'wb') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
+        csv_writer.writerow(['id', 'original_post', 'lemmatized_post'])
+        next_free_id = 1
+        for thread in data:
+            progress_indicator.tick()
+            for post in thread:
+                original_post = post.split('~')[0]
+                lemmatized_post = post.split('~')[1]
+
+                # This is too slow, instead write to CSV and then copy CSV into postgres with raw SQL
+                # db.add(Post(original=original_post, lemmatized=lemmatized_post))
+                # db.commit()
+
+                csv_writer.writerow([next_free_id, original_post.encode("utf-8"), lemmatized_post.encode("utf-8")])
+                next_free_id += 1
+
+    print csv_file_path
+
+    db.execute("COPY posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
+    db.commit()
+
+def load_pickle():
+    print "Loading pickled associations"
+    f = open(pickled_path)
+    return pickle.load(f)
+
+def save_pickle():
+    print "Saving pickled associations"
+    f = open(pickled_path, 'w')
+    pickle.dump(a, f)
 
 if __name__ == "__main__":
     db = get_session()
-
-    for drug in db.query(Drug):
-        print drug.name, drug.data
 
     processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
     word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
@@ -389,38 +412,70 @@ if __name__ == "__main__":
     symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
     pickled_path = "associations_object"
 
-    if raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ") == "y":
-        insert_posts_into_db(data_json_path)
+    insert_posts = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
+    insert_drugs_symptoms = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
+    insert_dosages = raw_input("Insert dosages to db? Enter y/n: ")
+    insert_postset_bridges = raw_input("Insert postset bridges to db? Enter y/n: ")
 
-    '''if os.path.isfile(pickled_path):
-        print "Loading pickled associations"
-        f = open(pickled_path)
-        a = pickle.load(f)
-    else:'''
-    a = Associations(data_json_path, symptom_path, drugs_path)
-    a.train(db)
+    if insert_posts == "y":
+        insert_posts_into_db(db, data_json_path)
 
-    # Pickle entire object for future use
-    f = open(pickled_path, 'w')
-    pickle.dump(a, f)
+    if os.path.isfile(pickled_path):
+        a = load_pickle()
+    else:
+        a = Associations(data_json_path, symptom_path, drugs_path)
+        a.train(db)
+        save_pickle()
+
         
     # Associations
-    create_json(db, "symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_postCounts)
-    create_json(db, "drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_postCounts)
-
-    for drug in db.query(Drug):
-        print drug.name
+    if insert_drugs_symptoms == "y":
+        create_json(db, "symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_postCounts)
+        create_json(db, "drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_postCounts)
 
     # Dosages
-    a.calculate_dosages(db)
+    if insert_dosages == "y":
+        a.calculate_dosages(db)
+        save_pickle()
 
     # Postset bridges to db
-    for grandparent in a.drug_postSets:
-        drug = db.query(Drug).filter(Drug.name == a.drug_representatives[grandparent]).one()
-        for post in a.drug_postSets[grandparent]:
-            db.add(Bridge_Drug_Post(post_id=post.id, drug_id=drug.id))
-    for grandparent in a.symptom_postSets:
-        symptom = db.query(Symptom).filter(Symptom.name == a.symptom_representatives[grandparent]).one()
-        for post in a.symptom_postSets[grandparent]:
-            db.add(Bridge_Symptom_Post(post_id=post.id, symptom_id=symptom.id))
-    db.commit()
+    if insert_postset_bridges:
+        print 'Inserting postset bridges to db...'
+
+        progress_indicator = Progress_indicator(len(a.drug_postSets))
+        csv_file_path = os.path.abspath('/tmp/temp3.csv')
+        with open(csv_file_path, 'wb') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
+            csv_writer.writerow(['id', 'post_id', 'drug_id'])
+            next_free_id = 1
+            for grandparent in a.drug_postSets:
+                progress_indicator.tick()
+                drug = db.query(Drug).filter(Drug.name == a.drug_representatives[grandparent]).one()
+                for post in a.drug_postSets[grandparent]:
+                    # Too slow
+                    #db.add(Bridge_Drug_Post(post_id=post.id, drug_id=drug.id))
+                    csv_writer.writerow([next_free_id, post.id, drug.id])
+                    next_free_id += 1
+        db.execute("COPY bridge_drug_posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
+        db.commit()
+
+
+
+
+
+        progress_indicator = Progress_indicator(len(a.symptom_postSets))
+        csv_file_path = os.path.abspath('/tmp/temp4.csv')
+        with open(csv_file_path, 'wb') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
+            csv_writer.writerow(['id', 'post_id', 'symptom_id'])
+            next_free_id = 1
+            for grandparent in a.symptom_postSets:
+                progress_indicator.tick()
+                symptom = db.query(Symptom).filter(Symptom.name == a.symptom_representatives[grandparent]).one()
+                for post in a.symptom_postSets[grandparent]:
+                    # Too slow
+                    # db.add(Bridge_Symptom_Post(post_id=post.id, symptom_id=symptom.id))
+                    csv_writer.writerow([next_free_id, post.id, symptom.id])
+                    next_free_id += 1
+        db.execute("COPY bridge_symptom_posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
+        db.commit()

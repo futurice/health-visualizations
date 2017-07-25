@@ -479,3 +479,4 @@ if __name__ == "__main__":
                     next_free_id += 1
         db.execute("COPY bridge_symptom_posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
         db.commit()
+

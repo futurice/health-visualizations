@@ -13,7 +13,7 @@ CORS(app)
 
 CONTENT_TYPE = {'ContentType': 'application/json' }
 
-# TODO allow searching for drugs/symptoms with any names in the bucket
+# TODO allow searching for drugs/symptoms with any name in the bucket
 
 @app.route("/drugs")
 def drugs():
@@ -44,19 +44,21 @@ def find_spec(db_session, name):
         return None
     return res[0]
 
-@app.route("/related_quotes/<key1>/<key2>")
-def related_quotes(key1, key2):
+@app.route("/related_quotes/<type1>/<key1>/<type2>/<key2>")
+def related_quotes(type1, key1, type2, key2):
     db_session = get_session()
     spec1 = find_spec(db_session, key1)
     spec2 = find_spec(db_session, key2)
     if spec2 is None or spec1 is None:
         return 'Not found', 404, CONTENT_TYPE
 
-    if type(spec1) == Drug:
+
+    '''
+    if type1 == Drug:
         bridges_with_key1 = db_session.query(Bridge_Drug_Post).filter(Bridge_Drug_Post.drug_id == spec1.id).all()
     else:
         bridges_with_key1 = db_session.query(Bridge_Symptom_Post).filter(Bridge_Symptom_Post.symptom_id == spec1.id).all()
-    if type(spec2) == Drug:
+    if type2 == Drug:
         bridges_with_key2 = db_session.query(Bridge_Drug_Post).filter(Bridge_Drug_Post.drug_id == spec2.id).all()
     else:
         bridges_with_key2 = db_session.query(Bridge_Symptom_Post).filter(Bridge_Symptom_Post.symptom_id == spec2.id).all()
@@ -65,7 +67,15 @@ def related_quotes(key1, key2):
     post_ids_with_key2 = [bridge.post_id for bridge in bridges_with_key2]
     post_ids_with_key1 = set(post_ids_with_key1)
     post_ids_with_both = [id for id in post_ids_with_key2 if id in post_ids_with_key1]
-    posts = db_session.query(Post).filter(Post.id.in_(post_ids_with_both))
+    posts = db_session.query(Post).filter(Post.id.in_(post_ids_with_both))'''
+
+    if type1 == Drug and type2 == Drug:
+        query_1 = db_session.query(Bridge_Drug_Post.post_id).filter(Bridge_Drug_Post.drug_id == spec1.id)
+        query_2 = db_session.query(Bridge_Drug_Post.post_id).filter(Bridge_Drug_Post.drug_id == spec2.id)
+
+        query_1.join(query_2.)
+
+
     post_originals = [post.original for post in posts]
     return jsonify(post_originals), 200, CONTENT_TYPE
 

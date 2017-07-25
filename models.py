@@ -1,7 +1,7 @@
 
 import json  
 import sqlalchemy  
-from sqlalchemy import Column, Integer, Text  
+from sqlalchemy import Column, Integer, Text, Index
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base  
 from sqlalchemy.orm import sessionmaker
@@ -24,7 +24,7 @@ db = sqlalchemy.create_engine(connection_string)
 engine = db.connect()  
 meta = sqlalchemy.MetaData(engine)
 
-def get_db():
+def get_db ():
     return db
 
 def get_session():
@@ -96,7 +96,18 @@ if __name__ == "__main__":
         meta.drop_all()
     else:
         print "Ok, we can try to insert new tables, but existing tables won't be touched."
-        for drug in get_session().query(Post):
-            print drug.lemmatized
+        if raw_input("Add indexes? Enter y/n: ") == "y":
+            idx1 = Index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
+            idx2 = Index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
+            idx3 = Index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
+            idx4 = Index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
+            idx5 = Index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
+            idx6 = Index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
+            idx1.create(bind=engine)
+            idx2.create(bind=engine)
+            idx3.create(bind=engine)
+            idx4.create(bind=engine)
+            idx5.create(bind=engine)
+            idx6.create(bind=engine)
 
     Base.metadata.create_all(engine)

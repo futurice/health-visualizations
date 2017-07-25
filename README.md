@@ -9,6 +9,7 @@ Prequisites
 * sqlalchemy
 * sudo apt-get install python-psycopg2
 * pip install psycopg2
+* pip install flask-cache
 * Postgres DB
     * Set `$PSQL_USERNAME` and `$PSQL_DB`
 

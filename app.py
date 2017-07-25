@@ -5,10 +5,12 @@ from sqlalchemy.orm import sessionmaker
 import sqlalchemy
 from sqlalchemy import Integer, and_
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import aliased
 from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote, Post
 from flask_cors import CORS, cross_origin
 
 app = Flask(__name__)
+#app.config['JSON_AS_ASCII'] = False
 CORS(app)
 
 CONTENT_TYPE = {'ContentType': 'application/json' }
@@ -17,11 +19,6 @@ CONTENT_TYPE = {'ContentType': 'application/json' }
 
 @app.route("/drugs")
 def drugs():
-    drugs = get_session().query(Drug).all()
-    return jsonify([d.name for d in drugs]), 200, CONTENT_TYPE
-
-@app.route("/meh")
-def blah():
     drugs = get_session().query(Drug).all()
     return jsonify([d.name for d in drugs]), 200, CONTENT_TYPE
 
@@ -36,48 +33,42 @@ def dosage_quotes(drug, dosage):
     post_originals = [post.original for post in posts]
     return jsonify(post_originals), 200, CONTENT_TYPE
 
-def find_spec(db_session, name):
-    res = db_session.query(Drug).filter(Drug.name == name).all()
-    if len(res) == 0:
-        res = db_session.query(Symptom).filter(Symptom.name == name).all()
-    if len(res) == 0:
-        return None
-    return res[0]
-
 @app.route("/related_quotes/<type1>/<key1>/<type2>/<key2>")
 def related_quotes(type1, key1, type2, key2):
     db_session = get_session()
-    spec1 = find_spec(db_session, key1)
-    spec2 = find_spec(db_session, key2)
-    if spec2 is None or spec1 is None:
+
+    # Query db for requested drugs/symptoms, place into variables spec1, spec2
+    if type1 == "drug":
+        res1 = db_session.query(Drug).filter(Drug.name == key1).all()
+    else:
+        res1 = db_session.query(Symptom).filter(Symptom.name == key1).all()
+    if type2 == "drug":
+        res2 = db_session.query(Drug).filter(Drug.name == key2).all()
+    else:
+        res2 = db_session.query(Symptom).filter(Symptom.name == key2).all()
+    if len(res1) == 0 or len(res2) == 0:
         return 'Not found', 404, CONTENT_TYPE
+    spec1 = res1[0]
+    spec2 = res2[0]
 
+    # Query db for related posts
+    if type1 == "drug" and type2 == "drug":
+        bridge_alias = aliased(Bridge_Drug_Post)
+        sq = db_session.query(Bridge_Drug_Post.post_id).join(bridge_alias, Bridge_Drug_Post.post_id == bridge_alias.post_id).filter(and_(Bridge_Drug_Post.drug_id == spec1.id, bridge_alias.drug_id == spec2.id)).subquery()
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+    elif type1 == "drug" and type2 == "symptom":
+        sq = db_session.query(Bridge_Drug_Post.post_id).join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id).filter(and_(Bridge_Drug_Post.drug_id == spec1.id, Bridge_Symptom_Post.symptom_id == spec2.id)).subquery()
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+    elif type1 == "symptom" and type2 == "drug":
+        sq = db_session.query(Bridge_Drug_Post.post_id).join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id).filter(and_(Bridge_Drug_Post.drug_id == spec2.id, Bridge_Symptom_Post.symptom_id == spec1.id)).subquery()
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+    elif type1 == "symptom" and type2 == "symptom":
+        bridge_alias = aliased(Bridge_Symptom_Post)
+        sq = db_session.query(Bridge_Symptom_Post.post_id).join(bridge_alias, Bridge_Symptom_Post.post_id == bridge_alias.post_id).filter(and_(Bridge_Symptom_Post.symptom_id == spec1.id, bridge_alias.symptom_id == spec2.id)).subquery()
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
 
-    '''
-    if type1 == Drug:
-        bridges_with_key1 = db_session.query(Bridge_Drug_Post).filter(Bridge_Drug_Post.drug_id == spec1.id).all()
-    else:
-        bridges_with_key1 = db_session.query(Bridge_Symptom_Post).filter(Bridge_Symptom_Post.symptom_id == spec1.id).all()
-    if type2 == Drug:
-        bridges_with_key2 = db_session.query(Bridge_Drug_Post).filter(Bridge_Drug_Post.drug_id == spec2.id).all()
-    else:
-        bridges_with_key2 = db_session.query(Bridge_Symptom_Post).filter(Bridge_Symptom_Post.symptom_id == spec2.id).all()
-
-    post_ids_with_key1 = [bridge.post_id for bridge in bridges_with_key1]
-    post_ids_with_key2 = [bridge.post_id for bridge in bridges_with_key2]
-    post_ids_with_key1 = set(post_ids_with_key1)
-    post_ids_with_both = [id for id in post_ids_with_key2 if id in post_ids_with_key1]
-    posts = db_session.query(Post).filter(Post.id.in_(post_ids_with_both))'''
-
-    if type1 == Drug and type2 == Drug:
-        query_1 = db_session.query(Bridge_Drug_Post.post_id).filter(Bridge_Drug_Post.drug_id == spec1.id)
-        query_2 = db_session.query(Bridge_Drug_Post.post_id).filter(Bridge_Drug_Post.drug_id == spec2.id)
-
-        query_1.join(query_2.)
-
-
-    post_originals = [post.original for post in posts]
-    return jsonify(post_originals), 200, CONTENT_TYPE
+    posts = [x for x in posts] # convert to list to jsonify
+    return jsonify(posts), 200, CONTENT_TYPE
 
 
 @app.route("/drugs/<drug>")

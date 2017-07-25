@@ -7,15 +7,18 @@ from sqlalchemy import Integer, and_
 from sqlalchemy.exc import IntegrityError
 from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote, Post
 from flask_cors import CORS, cross_origin
+from flask_caching import Cache
 
 app = Flask(__name__)
 CORS(app)
+cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
 CONTENT_TYPE = {'ContentType': 'application/json' }
 
 # TODO allow searching for drugs/symptoms with any name in the bucket
 
 @app.route("/drugs")
+@cache.cached()
 def drugs():
     drugs = get_session().query(Drug).all()
     return jsonify([d.name for d in drugs]), 200, CONTENT_TYPE
@@ -67,7 +70,7 @@ def related_quotes(type1, key1, type2, key2):
     post_ids_with_key2 = [bridge.post_id for bridge in bridges_with_key2]
     post_ids_with_key1 = set(post_ids_with_key1)
     post_ids_with_both = [id for id in post_ids_with_key2 if id in post_ids_with_key1]
-    posts = db_session.query(Post).filter(Post.id.in_(post_ids_with_both))'''
+    posts = db_session.query(Post).filter(Post.id.in_(post_ids_with_both))
 
     if type1 == Drug and type2 == Drug:
         query_1 = db_session.query(Bridge_Drug_Post.post_id).filter(Bridge_Drug_Post.drug_id == spec1.id)
@@ -75,7 +78,7 @@ def related_quotes(type1, key1, type2, key2):
 
         query_1.join(query_2.)
 
-
+    '''
     post_originals = [post.original for post in posts]
     return jsonify(post_originals), 200, CONTENT_TYPE
 
@@ -86,17 +89,20 @@ def show_drug(drug):
     return jsonify(res.data), 200, CONTENT_TYPE
 
 @app.route("/symptoms")
+@cache.cached()
 def symptoms():
     symptoms = get_session().query(Symptom).all()
     return jsonify([s.name for s in symptoms]), 200, CONTENT_TYPE
 
 @app.route("/symptoms/<symptom>")
+@cache.cached()
 def show_symptom(symptom):
     res = get_session().query(Symptom).filter(Symptom.name == symptom).one()
     return jsonify(res.data), 200, CONTENT_TYPE
 
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")
+@cache.cached()
 def common(resource):
     if resource == "drugs":
         query = get_session().query(Drug).order_by(Drug.data['postCount'].desc())

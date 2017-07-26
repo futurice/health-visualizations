@@ -15,7 +15,7 @@ app = Flask(__name__)
 CORS(app)
 cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
-CONTENT_TYPE = {'ContentType': 'application/json' }
+CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
 # TODO allow searching for drugs/symptoms with any name in the bucket
 
@@ -70,14 +70,21 @@ def related_quotes(type1, key1, type2, key2):
         sq = db_session.query(Bridge_Symptom_Post.post_id).join(bridge_alias, Bridge_Symptom_Post.post_id == bridge_alias.post_id).filter(and_(Bridge_Symptom_Post.symptom_id == spec1.id, bridge_alias.symptom_id == spec2.id)).subquery()
         posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
 
-    posts = [x for x in posts] # convert to list to jsonify
+    posts = [str(x).decode('utf-8') for x in posts]
+    print type(posts[0])
     return jsonify(posts), 200, CONTENT_TYPE
 
+@app.route("/search/<term>")
+def show_drug_or_symptom(term):
+    res = get_session().query(Drug).filter(Drug.name == term).all()
+    if len(res) == 0:
+        return show_symptom(term)
+    return jsonify(res[0].data), 200, CONTENT_TYPE
 
 @app.route("/drugs/<drug>")
 def show_drug(drug):
-    res = get_session().query(Drug).filter(Drug.name == drug).one()
-    return jsonify(res.data), 200, CONTENT_TYPE
+    res = get_session().query(Drug).filter(Drug.name == drug).all()
+    return jsonify(res[0].data), 200, CONTENT_TYPE
 
 @app.route("/symptoms")
 @cache.cached()

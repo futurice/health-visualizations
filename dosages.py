@@ -1,3 +1,4 @@
+import csv
 import json
 import io
 import os
@@ -5,9 +6,15 @@ import editdistance as ed
 import re
 import time
 import associations
-    
+import random
+from models import Post, Drug, Bridge_Dosage_Quote
+from progress_indicator import Progress_indicator
+from sqlalchemy.orm.attributes import flag_modified
+
+
 def is_drug(word, drug_parents, drug_grandparents):
     if word not in drug_parents:
+        # This is possible because we have preprocessed expressions like "16 mg" into "16mg"
         return None
     if drug_parents[word] in drug_grandparents:
         return drug_parents[word]
@@ -16,25 +23,35 @@ def is_dosage(word):
     return re.match("[0-9]+(g|mg)", word)
 
 def preprocess_post(post):
+    # Returns a post where dosages are cleaned into nicer form.
     ret_post = list()
 
     for idx, word in enumerate(post):
-        if word in ["mg", "g"] and idx - 1 >= 0 and post[idx - 1].isdigit():
-            
-            # This should be e.g 200mg or 6g
-            full_dose = post[idx - 1] + word
-            ret_post.append(full_dose)
-        elif not word.isdigit():
+
+        # Deal with expressions including a space, eg. "1 g", "400 mgx3"
+        if idx - 1 >= 0 and post[idx - 1].isdigit():
+            multiplier = 1
+            if word.startswith("g"):
+                multiplier = 1000
+                word = "mg"
+            if word.startswith("mg"):
+                value = multiplier * int(post[idx - 1]) # possible conversion from g to mg
+                full_dose = str(value) + "mg" # forget anything after mg, eg. mgx3->mg
+                del ret_post[-1] # remove previously added element, eg. "400" if we are now adding "400mg"
+                ret_post.append(full_dose)
+                continue
+
+        # Deal with expressions without a space, eg. "1g", "400mgx3"
+        if re.match("[0-9]+(g)", word):
+            value = 1000 * int(word.split("g")[0])
+            word = str(value) + "mg"
+        if re.match("[0-9]+(mg)", word):
+            ret_post.append(word.split("mg")[0] + "mg") # forget anything after mg
+        else:
+            # Not a dosage (or possibly "400" of "400 mg"; in that case this addition will be removed in next iteration)
             ret_post.append(word)
             
     return ret_post
-
-def trim(dose):
-    if "mg" in dose:
-        return dose.split("mg")[0] + "mg"
-    if "g" in dose:
-        return dose.split("g")[0] + "g"
-    return dose
 
 def closest_drug(post, ind, drug_parents, drug_grandparents):
     search_radius = 1
@@ -54,57 +71,77 @@ def closest_drug(post, ind, drug_parents, drug_grandparents):
 
 class Dosages:
 
-    def __init__(self, data, drug_parents, drug_grandparents, drug_representatives):
-        self.data = data
+    def __init__(self, drug_parents, drug_grandparents, drug_representatives):
         self.drug_parents = drug_parents
         self.drug_grandparents = drug_grandparents
         self.drug_representatives = drug_representatives
 
-    def train(self):
-        # Collects the amount of times a dose has been mentioned for each drug 
-        self.drug_dosages = dict()
-        mentions = dict()
+    def train(self, db):
+        # Collects the amount of times a dose has been mentioned for each drug
 
-        progress = 0
-        start = time.time()
         print "Finding drug dosages"
+        self.drug_dosages = dict()
 
-        interval = 10000
-        for thread in self.data:
+        # Inserting one at a time is too slow, instead we'll write to CSV and copy CSV to Postgres.
+        csv_file_path = os.path.abspath('/tmp/temp2.csv')
 
-            progress += 1
-            if progress % interval == 0:
-                print "Progressing at", progress, "/", len(self.data)
-                print time.time() - start, "seconds taken so far"
 
-            for post in thread:
-                post = associations.custom_split_stemmed(post)
-                p_post = preprocess_post(post)
+
+        # Collect drugs for fast referencing, initialize dicts
+        drugs = {}
+        for drug in db.query(Drug):
+            drugs[drug.name] = drug
+            self.drug_dosages[drug.name] = dict()
+
+        with open(csv_file_path, 'wb') as csvfile:
+            csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
+            csv_writer.writerow(['id', 'post_id', 'drug_id', 'dosage_mg'])
+            next_free_id = 1
+            progress_indicator = Progress_indicator(db.query(Post).count())
+            for post in db.query(Post):
+                progress_indicator.tick()
+
+                post_id = post.id
+                p_post = preprocess_post(associations.custom_split(post.lemmatized))
+
                 for idx, word in enumerate(p_post):
                     if is_dosage(word):
                         closest_drug_name = closest_drug(p_post, idx, self.drug_parents, self.drug_grandparents)
-                        word = trim(word)
+                        dosage = word
                         if not closest_drug_name:
                             continue
                         closest_drug_name = self.drug_representatives[closest_drug_name]
-                        
-                        if closest_drug_name not in self.drug_dosages:
-                            self.drug_dosages[closest_drug_name] = dict()
-                        if word not in self.drug_dosages[closest_drug_name]:
-                            self.drug_dosages[closest_drug_name][word] = 1
+
+                        if dosage not in self.drug_dosages[closest_drug_name]:
+                            self.drug_dosages[closest_drug_name][dosage] = 1
                         else:
-                            self.drug_dosages[closest_drug_name][word] += 1
-                            
-                        # Add to mentions dict
-                        # TODO this legit
-                        if closest_drug_name not in mentions:
-                            mentions[closest_drug_name] = dict()
-                        if word not in mentions[closest_drug_name]:
-                            mentions[closest_drug_name].setdefault(word, [])
-                            mentions[closest_drug_name][word].append(p_post)
+                            self.drug_dosages[closest_drug_name][dosage] += 1
+
+                        drug = drugs[closest_drug_name]
+                        dosage_value = int(dosage.split("mg")[0])
+                        if dosage_value > 10000:
+                            # We don't believe anyone takes more than 10g of a medicine at once.
+                            continue
+
+                        # This is too slow, write to CSV instead and copy CSV to Postgres
+                        #link = Bridge_Dosage_Quote(post_id=post_id, drug_id=drug.id, dosage_mg=dosage_value)
+                        #db.add(link)
+
+                        csv_writer.writerow(
+                            [next_free_id, post_id, drug.id, dosage_value])
+                        next_free_id += 1
+
+        db.execute("COPY bridge_dosage_quotes FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
+        db.commit()
+
+        for drug in db.query(Drug):
+            drug.data["dosages"] = self.drug_dosages[drug.name]
+            # Fix a persistence problem (make SQLAlchemy understand that the JSON field is updated.)
+            flag_modified(drug, "data")
+        db.commit()
 
         print "Dosages done."
-        return self.drug_dosages
+
 if __name__ == "__main__":
     pass
 

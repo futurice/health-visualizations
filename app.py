@@ -6,6 +6,7 @@ import sqlalchemy
 from sqlalchemy import Integer, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
+from sqlalchemy.orm.exc import NoResultFound
 from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote, Post
 from flask_cors import CORS, cross_origin
 from flask_caching import Cache
@@ -40,63 +41,80 @@ def dosage_quotes(drug, dosage):
 def related_quotes(type1, key1, type2, key2):
     db_session = get_session()
 
-    # Query db for requested drugs/symptoms, place into variables spec1, spec2
-    if type1 == "drug":
-        res1 = db_session.query(Drug).filter(Drug.name == key1).all()
-    else:
-        res1 = db_session.query(Symptom).filter(Symptom.name == key1).all()
-    if type2 == "drug":
-        res2 = db_session.query(Drug).filter(Drug.name == key2).all()
-    else:
-        res2 = db_session.query(Symptom).filter(Symptom.name == key2).all()
-    if len(res1) == 0 or len(res2) == 0:
+    # Query db for requested drugs/symptoms
+    try:
+        if type1 == "drug":
+            res1 = db_session.query(Drug).filter(Drug.name == key1).one()
+        else:
+            res1 = db_session.query(Symptom).filter(Symptom.name == key1).one()
+        if type2 == "drug":
+            res2 = db_session.query(Drug).filter(Drug.name == key2).one()
+        else:
+            res2 = db_session.query(Symptom).filter(Symptom.name == key2).one()
+    except:
         return 'Not found', 404, CONTENT_TYPE
-    spec1 = res1[0]
-    spec2 = res2[0]
 
     # Query db for related posts
     if type1 == "drug" and type2 == "drug":
         bridge_alias = aliased(Bridge_Drug_Post)
-        sq = db_session.query(Bridge_Drug_Post.post_id).join(bridge_alias, Bridge_Drug_Post.post_id == bridge_alias.post_id).filter(and_(Bridge_Drug_Post.drug_id == spec1.id, bridge_alias.drug_id == spec2.id)).subquery()
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+        sq = db_session.query(Bridge_Drug_Post.post_id)\
+            .join(bridge_alias, Bridge_Drug_Post.post_id == bridge_alias.post_id)\
+            .filter(and_(Bridge_Drug_Post.drug_id == res1.id, bridge_alias.drug_id == res2.id))\
+            .subquery()
     elif type1 == "drug" and type2 == "symptom":
-        sq = db_session.query(Bridge_Drug_Post.post_id).join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id).filter(and_(Bridge_Drug_Post.drug_id == spec1.id, Bridge_Symptom_Post.symptom_id == spec2.id)).subquery()
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+        sq = db_session.query(Bridge_Drug_Post.post_id)\
+            .join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id)\
+            .filter(and_(Bridge_Drug_Post.drug_id == res1.id, Bridge_Symptom_Post.symptom_id == res2.id))\
+            .subquery()
     elif type1 == "symptom" and type2 == "drug":
-        sq = db_session.query(Bridge_Drug_Post.post_id).join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id).filter(and_(Bridge_Drug_Post.drug_id == spec2.id, Bridge_Symptom_Post.symptom_id == spec1.id)).subquery()
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+        sq = db_session.query(Bridge_Drug_Post.post_id)\
+            .join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id)\
+            .filter(and_(Bridge_Drug_Post.drug_id == res2.id, Bridge_Symptom_Post.symptom_id == res1.id))\
+            .subquery()
     elif type1 == "symptom" and type2 == "symptom":
         bridge_alias = aliased(Bridge_Symptom_Post)
-        sq = db_session.query(Bridge_Symptom_Post.post_id).join(bridge_alias, Bridge_Symptom_Post.post_id == bridge_alias.post_id).filter(and_(Bridge_Symptom_Post.symptom_id == spec1.id, bridge_alias.symptom_id == spec2.id)).subquery()
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+        sq = db_session.query(Bridge_Symptom_Post.post_id)\
+            .join(bridge_alias, Bridge_Symptom_Post.post_id == bridge_alias.post_id)\
+            .filter(and_(Bridge_Symptom_Post.symptom_id == res1.id, bridge_alias.symptom_id == res2.id))\
+            .subquery()
 
+    posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
     posts = [str(x).decode('utf-8') for x in posts]
-    print type(posts[0])
     return jsonify(posts), 200, CONTENT_TYPE
 
 @app.route("/search/<term>")
 def show_drug_or_symptom(term):
-    res = get_session().query(Drug).filter(Drug.name == term).all()
-    if len(res) == 0:
+    try:
+        res = get_session().query(Drug).filter(Drug.name == term).one()
+        return jsonify(res[0].data), 200, CONTENT_TYPE
+    except NoResultFound:
         return show_symptom(term)
-    return jsonify(res[0].data), 200, CONTENT_TYPE
 
 @app.route("/drugs/<drug>")
 def show_drug(drug):
-    res = get_session().query(Drug).filter(Drug.name == drug).all()
-    return jsonify(res[0].data), 200, CONTENT_TYPE
+    try:
+        res = get_session().query(Drug).filter(Drug.name == drug).one()
+        return jsonify(res.data), 200, CONTENT_TYPE
+    except NoResultFound:
+        return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/symptoms")
 @cache.cached()
 def symptoms():
-    symptoms = get_session().query(Symptom).all()
-    return jsonify([s.name for s in symptoms]), 200, CONTENT_TYPE
+    try:
+        symptoms = get_session().query(Symptom).one()
+        return jsonify([s.name for s in symptoms]), 200, CONTENT_TYPE
+    except NoResultFound:
+        return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/symptoms/<symptom>")
 @cache.cached()
 def show_symptom(symptom):
-    res = get_session().query(Symptom).filter(Symptom.name == symptom).one()
-    return jsonify(res.data), 200, CONTENT_TYPE
+    try:
+        res = get_session().query(Symptom).filter(Symptom.name == symptom).one()
+        return jsonify(res.data), 200, CONTENT_TYPE
+    except NoResultFound:
+        return 'Not found', 404, CONTENT_TYPE
 
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")
@@ -110,22 +128,3 @@ def common(resource):
         query = get_session().query(Symptom).order_by(Symptom.data['postCount'].desc())
         results = [(symptom.name, symptom.data['postCount']) for symptom in query.all()]
         return jsonify(results), 200, CONTENT_TYPE
-
-'''
-@app.route("/upload", methods=["POST"])
-def upload():
-    if request.method == 'POST':
-        content = request.json
-        name = content["name"]
-        data = content["data"]
-
-        d = Drug(name=name, data=data)
-        session = get_session()
-        session.add(d)
-        
-        try:
-            session.commit()
-            return ("success", 200)
-        except IntegrityError:
-            return ("already exists", 400)
-'''

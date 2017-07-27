@@ -29,7 +29,6 @@ def get_db ():
 
 def get_session():
     # This should be called only once! Persistence problems otherwise.
-    # TODO: make into singleton?
     SessionFactory = sessionmaker(engine) 
     session = SessionFactory()
     return session

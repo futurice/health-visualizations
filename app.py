@@ -51,7 +51,7 @@ def related_quotes(type1, key1, type2, key2):
             res2 = db_session.query(Drug).filter(Drug.name == key2).one()
         else:
             res2 = db_session.query(Symptom).filter(Symptom.name == key2).one()
-    except:
+    except NoResultFound:
         return 'Not found', 404, CONTENT_TYPE
 
     # Query db for related posts

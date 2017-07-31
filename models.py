@@ -1,7 +1,7 @@
 
 import json  
 import sqlalchemy  
-from sqlalchemy import Column, Integer, Text, Index
+from sqlalchemy import Column, Integer, Text, Index, String
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base  
 from sqlalchemy.orm import sessionmaker
@@ -55,6 +55,16 @@ class Symptom(Base):
     name = Column(Text, unique=True)
     data = Column(JSONB)
 
+class Search_Term(Base):
+    __tablename__ = 'search_terms'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(64), nullable=False, unique=True)
+    drug_id = Column(Integer, ForeignKey('drugs.id'), nullable=True)
+    symptom_id = Column(Integer, ForeignKey('symptoms.id'), nullable=True)
+
+    ref_drug = relationship(Drug, backref="search_terms")
+    ref_symptom = relationship(Symptom, backref="search_terms")
+
 class Bridge_Dosage_Quote(Base):
     __tablename__ = 'bridge_dosage_quotes'
 
@@ -88,6 +98,13 @@ class Bridge_Symptom_Post(Base):
     ref_symptom = relationship(Symptom, backref="bridge_symptom_posts")
 
 
+def create_index(index_name, table_field):
+    try:
+        idx = Index(index_name, table_field)
+        idx.create(bind=engine)
+    except:
+        print 'Skipping ', index_name
+        pass
 
 if __name__ == "__main__":
     if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
@@ -95,18 +112,14 @@ if __name__ == "__main__":
         meta.drop_all()
     else:
         print "Ok, we can try to insert new tables, but existing tables won't be touched."
-        if raw_input("Add indexes? Enter y/n: ") == "y":
-            idx1 = Index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
-            idx2 = Index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
-            idx3 = Index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
-            idx4 = Index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
-            idx5 = Index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
-            idx6 = Index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
-            idx1.create(bind=engine)
-            idx2.create(bind=engine)
-            idx3.create(bind=engine)
-            idx4.create(bind=engine)
-            idx5.create(bind=engine)
-            idx6.create(bind=engine)
 
     Base.metadata.create_all(engine)
+    if raw_input("Add indexes? Enter y/n: ") == "y":
+        create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
+        create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
+        create_index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
+        create_index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
+        create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
+        create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
+        create_index('search_terms_index', Search_Term.name)
+

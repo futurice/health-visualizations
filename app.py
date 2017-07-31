@@ -37,6 +37,12 @@ def dosage_quotes(drug, dosage):
     post_originals = [post.original for post in posts]
     return jsonify(post_originals), 200, CONTENT_TYPE
 
+def query_builder(session, Table1, Table2, condition1, condition2):
+    return session.query(Table1.post_id)\
+        .join(Table2, Table1.post_id == Table2.post_id)\
+        .filter(and_(condition1, condition2))\
+        .subquery()
+
 @app.route("/related_quotes/<type1>/<key1>/<type2>/<key2>")
 def related_quotes(type1, key1, type2, key2):
     db_session = get_session()
@@ -55,30 +61,21 @@ def related_quotes(type1, key1, type2, key2):
         return 'Not found', 404, CONTENT_TYPE
 
     # Query db for related posts
-    if type1 == "drug" and type2 == "drug":
-        bridge_alias = aliased(Bridge_Drug_Post)
-        sq = db_session.query(Bridge_Drug_Post.post_id)\
-            .join(bridge_alias, Bridge_Drug_Post.post_id == bridge_alias.post_id)\
-            .filter(and_(Bridge_Drug_Post.drug_id == res1.id, bridge_alias.drug_id == res2.id))\
-            .subquery()
-    elif type1 == "drug" and type2 == "symptom":
-        sq = db_session.query(Bridge_Drug_Post.post_id)\
-            .join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id)\
-            .filter(and_(Bridge_Drug_Post.drug_id == res1.id, Bridge_Symptom_Post.symptom_id == res2.id))\
-            .subquery()
-    elif type1 == "symptom" and type2 == "drug":
-        sq = db_session.query(Bridge_Drug_Post.post_id)\
-            .join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id)\
-            .filter(and_(Bridge_Drug_Post.drug_id == res2.id, Bridge_Symptom_Post.symptom_id == res1.id))\
-            .subquery()
-    elif type1 == "symptom" and type2 == "symptom":
-        bridge_alias = aliased(Bridge_Symptom_Post)
-        sq = db_session.query(Bridge_Symptom_Post.post_id)\
-            .join(bridge_alias, Bridge_Symptom_Post.post_id == bridge_alias.post_id)\
-            .filter(and_(Bridge_Symptom_Post.symptom_id == res1.id, bridge_alias.symptom_id == res2.id))\
-            .subquery()
-
+    if type1 == "drug":
+        Table1 = Bridge_Drug_Post
+        condition1 = Table1.drug_id == res1.id
+    else:
+        Table1 = Bridge_Symptom_Post
+        condition1 = Table1.symptom_id == res1.id
+    if type2 == "drug":
+        Table2 = aliased(Bridge_Drug_Post)
+        condition2 = Table2.drug_id == res2.id
+    else:
+        Table2 = aliased(Bridge_Symptom_Post)
+        condition2 = Table2.symptom_id == res2.id
+    sq = query_builder(db_session, Table1, Table2, condition1, condition2)
     posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+
     posts = [str(x).decode('utf-8') for x in posts]
     return jsonify(posts), 200, CONTENT_TYPE
 

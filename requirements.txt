@@ -3,5 +3,6 @@ psycopg2==2.7.1
 sqlalchemy==1.1.11
 flask-cache==0.13.1
 flask-cors
+flask-caching
 gunicorn
 

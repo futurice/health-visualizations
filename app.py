@@ -22,6 +22,10 @@ cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
+@app.route("/test")
+def route_test():
+    return "works", 200, CONTENT_TYPE
+
 @app.route("/drugs")
 @cache.cached()
 def drugs():

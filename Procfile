@@ -1,1 +1,1 @@
-web: python -m FLASK_APP=app.py flask run --host=0.0.0.0
+web: python -m flask run --host=0.0.0.0

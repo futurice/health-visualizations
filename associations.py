@@ -176,17 +176,21 @@ def count_associations(keyword, parents, grandparents, postSets):
     return counts
 
 
-    """ Takes whole vocab and wanted keywords, e.g drugs, and returns sets of words for each keyword """
-def get_baskets(vocab, parents, grandparents):
+    """ Returns baskets of abbreviations for each keyword in grandparents set. """
+def get_baskets(db, parents, grandparents):
     baskets = dict()
 
     for keyword in grandparents:
         baskets[keyword] = set()
 
-    for word in vocab:
-        p = parents[word]
-        if p in grandparents:
-            baskets[p].add(word)
+    for post in db.query(Post).all():
+        orig = custom_split_original(post)
+        lemm = custom_split_stemmed(post)
+        for i, word in enumerate(lemm):
+            parent = parents[word]
+            if parent in grandparents:
+                baskets[parent].add(lemm[i])
+                baskets[parent].add(orig[i])
 
     return baskets
             
@@ -281,8 +285,8 @@ class Associations:
         self.symptom_postSets = collect_postSets(self.symptom_parents, self.symptom_grandparents, db)
         out("Part 4 done: collected postsets")
 
-        self.drug_baskets = get_baskets(self.vocab, self.drug_parents, self.drug_grandparents)
-        self.symptom_baskets = get_baskets(self.vocab, self.symptom_parents, self.symptom_grandparents)
+        self.drug_baskets = get_baskets(db, self.drug_parents, self.drug_grandparents)
+        self.symptom_baskets = get_baskets(db, self.symptom_parents, self.symptom_grandparents)
         out("Part 5 done: collected baskets")
 
     def calculate_dosages(self, db):

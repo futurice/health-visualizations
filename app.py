@@ -1,3 +1,7 @@
+from __future__ import print_function # In python 2.7
+import time
+
+import sys
 from flask import Flask, jsonify, json, request
 from models import Drug, Symptom
 from sqlalchemy.ext.declarative import declarative_base  
@@ -25,13 +29,16 @@ def drugs():
     return jsonify([d.name for d in drugs]), 200, CONTENT_TYPE
 
 @app.route("/dosage_quotes/<drug>/<dosage>")
+@cache.cached()
 def dosage_quotes(drug, dosage):
     quotes = Post.find_dosage_quotes(drug, dosage)
     return jsonify(quotes), 200, CONTENT_TYPE
 
-@app.route("/related_quotes/<type1>/<key1>/<type2>/<key2>")
-def related_quotes(type1, key1, type2, key2):
+@app.route("/related_quotes/<key1>/<key2>")
+@cache.cached()
+def related_quotes(key1, key2):
     db_session = get_session()
+
     try:
         res1 = Search_Term.find_drug_or_symptom(db_session, key1)
         res2 = Search_Term.find_drug_or_symptom(db_session, key2)
@@ -43,6 +50,7 @@ def related_quotes(type1, key1, type2, key2):
     return jsonify(posts), 200, CONTENT_TYPE
 
 @app.route("/search/<term>")
+@cache.cached()
 def show_drug_or_symptom(term):
     try:
         res = Search_Term.find_drug_or_symptom(get_session(), term)
@@ -51,6 +59,7 @@ def show_drug_or_symptom(term):
         return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/drugs/<drug>")
+@cache.cached()
 def show_drug(drug):
     try:
         d = Drug.find_drug(get_session(), drug)

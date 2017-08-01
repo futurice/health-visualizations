@@ -10,19 +10,19 @@ from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
-import os 
+import os
 
-PSQL_USERNAME = os.environ['PSQL_USERNAME']
-
-try: # added new env variable. try-except is here temporarily so that this commit doesn't break anything.
-    PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
+try:
+    # Staging and production on Heroku
+    PSQL_URL = os.environ['DATABASE_URL']
 except:
-    PSQL_PASSWORD = PSQL_USERNAME
+    # Local development
+    PSQL_USERNAME = os.environ['PSQL_USERNAME']
+    PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
+    PSQL_DB = os.environ['PSQL_DB']
+    PSQL_URL = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
 
-PSQL_DB = os.environ['PSQL_DB']
-
-connection_string = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
-db = sqlalchemy.create_engine(connection_string)  
+db = sqlalchemy.create_engine(PSQL_URL)
 engine = db.connect()  
 meta = sqlalchemy.MetaData(engine)
 
@@ -166,13 +166,15 @@ if __name__ == "__main__":
     else:
         print "Ok, we can try to insert new tables, but existing tables won't be touched."
 
+    # Create / update schema
     Base.metadata.create_all(engine)
-    if raw_input("Add indexes? Enter y/n: ") == "y":
-        create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
-        create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
-        create_index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
-        create_index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
-        create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
-        create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
-        create_index('search_terms_index', Search_Term.name)
+
+    # Create indexes if they don't exist
+    create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
+    create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
+    create_index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
+    create_index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
+    create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
+    create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
+    create_index('search_terms_index', Search_Term.name)
 

@@ -17,5 +17,3 @@ Instructions
 
 * Run `models.py` to create tables and `associations.py` to populate them. 
 * Start server with `FLASK_APP=app.py FLASK_DEBUG=1 flask run` for development.
-
-TODO `requirements.txt`

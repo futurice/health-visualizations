@@ -185,12 +185,13 @@ def get_baskets(db, parents, grandparents):
 
     for post in db.query(Post).all():
         i = 0
+        original_split = custom_split(post.original)
         for lemmatized_word in custom_split(post.lemmatized):
             parent = parents[lemmatized_word]
             if parent in grandparents:
                 # Capture both lemmatized and original abbreviation
                 baskets[parent].add(lemmatized_word)
-                baskets[parent].add(post.original[i])
+                baskets[parent].add(original_split[i])
             i += 1
 
     return baskets

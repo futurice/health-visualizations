@@ -14,7 +14,7 @@ import cPickle as pickle
 import dosages 
 
 # For adding to DB
-from models import Drug, Symptom, Post, get_session, Bridge_Drug_Post, Bridge_Symptom_Post, get_db
+from models import Drug, Symptom, Post, get_session, Bridge_Drug_Post, Bridge_Symptom_Post, get_db, Search_Term
 from sqlalchemy.exc import IntegrityError
 
 from progress_indicator import Progress_indicator
@@ -416,6 +416,7 @@ if __name__ == "__main__":
     insert_drugs_symptoms = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
     insert_dosages = raw_input("Insert dosages to db? Enter y/n: ")
     insert_postset_bridges = raw_input("Insert postset bridges to db? Enter y/n: ")
+    insert_search_terms = raw_input("Insert search terms to db? Enter y/n: ")
 
     if insert_posts == "y":
         insert_posts_into_db(db, data_json_path)
@@ -439,7 +440,7 @@ if __name__ == "__main__":
         save_pickle()
 
     # Postset bridges to db
-    if insert_postset_bridges:
+    if insert_postset_bridges == "y":
         print 'Inserting postset bridges to db...'
 
         progress_indicator = Progress_indicator(len(a.drug_postSets))
@@ -459,10 +460,6 @@ if __name__ == "__main__":
         db.execute("COPY bridge_drug_posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
         db.commit()
 
-
-
-
-
         progress_indicator = Progress_indicator(len(a.symptom_postSets))
         csv_file_path = os.path.abspath('/tmp/temp4.csv')
         with open(csv_file_path, 'wb') as csvfile:
@@ -480,3 +477,18 @@ if __name__ == "__main__":
         db.execute("COPY bridge_symptom_posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
         db.commit()
 
+    # Search terms to db
+    if insert_search_terms == "y":
+        for drug in db.query(Drug).all():
+            for term in drug.data["basket"]:
+                if len(term) > 64:
+                    # This table exists to help user searches. Assuming users don't need to search with super long terms.
+                    continue
+                db.add(Search_Term(name=term, drug_id=drug.id, symptom_id=None))
+                db.commit()
+        for symptom in db.query(Symptom).all():
+            for term in symptom.data["basket"]:
+                if len(term) > 64:
+                    continue
+                db.add(Search_Term(name=term, drug_id=None, symptom_id=symptom.id))
+                db.commit()

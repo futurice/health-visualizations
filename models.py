@@ -1,10 +1,12 @@
 
-import json  
+import json
+from operator import and_
+
 import sqlalchemy  
-from sqlalchemy import Column, Integer, Text, Index
+from sqlalchemy import Column, Integer, Text, Index, String
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base  
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, aliased
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
@@ -36,6 +38,13 @@ def get_session():
 Base = declarative_base()
 
 
+# Helper method for Post.find_related_quotes()
+def query_builder(session, Table1, Table2, condition1, condition2):
+    return session.query(Table1.post_id)\
+        .join(Table2, Table1.post_id == Table2.post_id)\
+        .filter(and_(condition1, condition2))\
+        .subquery()
+
 class Post(Base):
     __tablename__ = 'posts'
 
@@ -43,17 +52,71 @@ class Post(Base):
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
 
+    @staticmethod
+    def find_related_quotes(db_session, res1, res2):
+        if Drug == type(res1):
+            Table1 = Bridge_Drug_Post
+            condition1 = Table1.drug_id == res1.id
+        else:
+            Table1 = Bridge_Symptom_Post
+            condition1 = Table1.symptom_id == res1.id
+        if Drug == type(res2):
+            Table2 = aliased(Bridge_Drug_Post)
+            condition2 = Table2.drug_id == res2.id
+        else:
+            Table2 = aliased(Bridge_Symptom_Post)
+            condition2 = Table2.symptom_id == res2.id
+        sq = query_builder(db_session, Table1, Table2, condition1, condition2)
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+        return posts
+
+    @staticmethod
+    def find_dosage_quotes(drug_name, dosage):
+        db_session = get_session()
+        drug = Drug.find_drug(db_session, drug_name)
+        bridges = db_session.query(Bridge_Dosage_Quote).filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
+                                                                    Bridge_Dosage_Quote.dosage_mg == dosage))
+        post_ids = [bridge.post_id for bridge in bridges]
+        post_originals = db_session.query(Post.original).filter(Post.id.in_(post_ids))
+        return [x for x in post_originals]  # query to list
+
 class Drug(Base):
     __tablename__ = 'drugs'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
 
+    @staticmethod
+    def find_drug(db_session, search_term):
+        return db_session.query(Drug).join(Search_Term, Search_Term.drug_id == Drug.id).filter(Search_Term.name == search_term).one()
+
 class Symptom(Base):
     __tablename__ = 'symptoms'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
+
+    @staticmethod
+    def find_symptom(db_session, search_term):
+        return db_session.query(Symptom).join(Search_Term, Search_Term.symptom_id == Symptom.id).filter(Search_Term.name == search_term).one()
+
+class Search_Term(Base):
+    __tablename__ = 'search_terms'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(64), nullable=False, unique=True)
+    drug_id = Column(Integer, ForeignKey('drugs.id'), nullable=True)
+    symptom_id = Column(Integer, ForeignKey('symptoms.id'), nullable=True)
+
+    ref_drug = relationship(Drug, backref="search_terms")
+    ref_symptom = relationship(Symptom, backref="search_terms")
+
+    @staticmethod
+    def find_drug_or_symptom(db_session, search_term):
+        res = db_session.query(Search_Term).filter(Search_Term.name == search_term).one()
+        if res.drug_id is not None:
+            return db_session.query(Drug).filter(Drug.id == res.drug_id).one()
+        else:
+            return db_session.query(Symptom).filter(Symptom.id == res.symptom_id).one()
 
 class Bridge_Dosage_Quote(Base):
     __tablename__ = 'bridge_dosage_quotes'
@@ -88,6 +151,13 @@ class Bridge_Symptom_Post(Base):
     ref_symptom = relationship(Symptom, backref="bridge_symptom_posts")
 
 
+def create_index(index_name, table_field):
+    try:
+        idx = Index(index_name, table_field)
+        idx.create(bind=engine)
+    except:
+        print 'Skipping ', index_name
+        pass
 
 if __name__ == "__main__":
     if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
@@ -95,18 +165,14 @@ if __name__ == "__main__":
         meta.drop_all()
     else:
         print "Ok, we can try to insert new tables, but existing tables won't be touched."
-        if raw_input("Add indexes? Enter y/n: ") == "y":
-            idx1 = Index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
-            idx2 = Index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
-            idx3 = Index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
-            idx4 = Index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
-            idx5 = Index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
-            idx6 = Index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
-            idx1.create(bind=engine)
-            idx2.create(bind=engine)
-            idx3.create(bind=engine)
-            idx4.create(bind=engine)
-            idx5.create(bind=engine)
-            idx6.create(bind=engine)
 
     Base.metadata.create_all(engine)
+    if raw_input("Add indexes? Enter y/n: ") == "y":
+        create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
+        create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
+        create_index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
+        create_index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
+        create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
+        create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
+        create_index('search_terms_index', Search_Term.name)
+

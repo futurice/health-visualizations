@@ -7,7 +7,7 @@ from sqlalchemy import Integer, and_
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
-from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote, Post
+from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote, Post, Search_Term
 from flask_cors import CORS, cross_origin
 from flask_caching import Cache
 
@@ -18,8 +18,6 @@ cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
-# TODO allow searching for drugs/symptoms with any name in the bucket
-
 @app.route("/drugs")
 @cache.cached()
 def drugs():
@@ -28,73 +26,35 @@ def drugs():
 
 @app.route("/dosage_quotes/<drug>/<dosage>")
 def dosage_quotes(drug, dosage):
-    db_session = get_session()
-    drug_id = db_session.query(Drug).filter(Drug.name == drug).one().id
-    bridges = db_session.query(Bridge_Dosage_Quote).filter(and_(Bridge_Dosage_Quote.drug_id == drug_id,
-                                                                Bridge_Dosage_Quote.dosage_mg == dosage))
-    post_ids = [bridge.post_id for bridge in bridges]
-    posts = db_session.query(Post).filter(Post.id.in_(post_ids))
-    post_originals = [post.original for post in posts]
-    return jsonify(post_originals), 200, CONTENT_TYPE
+    quotes = Post.find_dosage_quotes(drug, dosage)
+    return jsonify(quotes), 200, CONTENT_TYPE
 
 @app.route("/related_quotes/<type1>/<key1>/<type2>/<key2>")
 def related_quotes(type1, key1, type2, key2):
     db_session = get_session()
-
-    # Query db for requested drugs/symptoms
     try:
-        if type1 == "drug":
-            res1 = db_session.query(Drug).filter(Drug.name == key1).one()
-        else:
-            res1 = db_session.query(Symptom).filter(Symptom.name == key1).one()
-        if type2 == "drug":
-            res2 = db_session.query(Drug).filter(Drug.name == key2).one()
-        else:
-            res2 = db_session.query(Symptom).filter(Symptom.name == key2).one()
+        res1 = Search_Term.find_drug_or_symptom(db_session, key1)
+        res2 = Search_Term.find_drug_or_symptom(db_session, key2)
     except NoResultFound:
         return 'Not found', 404, CONTENT_TYPE
 
-    # Query db for related posts
-    if type1 == "drug" and type2 == "drug":
-        bridge_alias = aliased(Bridge_Drug_Post)
-        sq = db_session.query(Bridge_Drug_Post.post_id)\
-            .join(bridge_alias, Bridge_Drug_Post.post_id == bridge_alias.post_id)\
-            .filter(and_(Bridge_Drug_Post.drug_id == res1.id, bridge_alias.drug_id == res2.id))\
-            .subquery()
-    elif type1 == "drug" and type2 == "symptom":
-        sq = db_session.query(Bridge_Drug_Post.post_id)\
-            .join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id)\
-            .filter(and_(Bridge_Drug_Post.drug_id == res1.id, Bridge_Symptom_Post.symptom_id == res2.id))\
-            .subquery()
-    elif type1 == "symptom" and type2 == "drug":
-        sq = db_session.query(Bridge_Drug_Post.post_id)\
-            .join(Bridge_Symptom_Post, Bridge_Drug_Post.post_id == Bridge_Symptom_Post.post_id)\
-            .filter(and_(Bridge_Drug_Post.drug_id == res2.id, Bridge_Symptom_Post.symptom_id == res1.id))\
-            .subquery()
-    elif type1 == "symptom" and type2 == "symptom":
-        bridge_alias = aliased(Bridge_Symptom_Post)
-        sq = db_session.query(Bridge_Symptom_Post.post_id)\
-            .join(bridge_alias, Bridge_Symptom_Post.post_id == bridge_alias.post_id)\
-            .filter(and_(Bridge_Symptom_Post.symptom_id == res1.id, bridge_alias.symptom_id == res2.id))\
-            .subquery()
-
-    posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+    posts = Post.find_related_quotes(db_session, res1, res2)
     posts = [str(x).decode('utf-8') for x in posts]
     return jsonify(posts), 200, CONTENT_TYPE
 
 @app.route("/search/<term>")
 def show_drug_or_symptom(term):
     try:
-        res = get_session().query(Drug).filter(Drug.name == term).one()
-        return jsonify(res[0].data), 200, CONTENT_TYPE
+        res = Search_Term.find_drug_or_symptom(get_session(), term)
+        return jsonify(res.data), 200, CONTENT_TYPE
     except NoResultFound:
-        return show_symptom(term)
+        return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/drugs/<drug>")
 def show_drug(drug):
     try:
-        res = get_session().query(Drug).filter(Drug.name == drug).one()
-        return jsonify(res.data), 200, CONTENT_TYPE
+        d = Drug.find_drug(get_session(), drug)
+        return jsonify(d.data), 200, CONTENT_TYPE
     except NoResultFound:
         return 'Not found', 404, CONTENT_TYPE
 
@@ -111,8 +71,8 @@ def symptoms():
 @cache.cached()
 def show_symptom(symptom):
     try:
-        res = get_session().query(Symptom).filter(Symptom.name == symptom).one()
-        return jsonify(res.data), 200, CONTENT_TYPE
+        s = Symptom.find_symptom(get_session(), symptom)
+        return jsonify(s.data), 200, CONTENT_TYPE
     except NoResultFound:
         return 'Not found', 404, CONTENT_TYPE
 

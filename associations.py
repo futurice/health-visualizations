@@ -184,13 +184,11 @@ def get_baskets(db, parents, grandparents):
         baskets[keyword] = set()
 
     for post in db.query(Post).all():
-        orig = custom_split_original(post)
-        lemm = custom_split_stemmed(post)
-        for i, word in enumerate(lemm):
+        for i, word in enumerate(post.lemmatized):
             parent = parents[word]
             if parent in grandparents:
-                baskets[parent].add(lemm[i])
-                baskets[parent].add(orig[i])
+                baskets[parent].add(post.lemmatized[i])
+                baskets[parent].add(post.original[i])
 
     return baskets
             
@@ -416,21 +414,23 @@ if __name__ == "__main__":
     symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
     pickled_path = "associations_object"
 
+    print "If you are running this for the first time, just enter \"y\" on everything."
     insert_posts = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
     insert_drugs_symptoms = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
     insert_dosages = raw_input("Insert dosages to db? Enter y/n: ")
     insert_postset_bridges = raw_input("Insert postset bridges to db? Enter y/n: ")
     insert_search_terms = raw_input("Insert search terms to db? Enter y/n: ")
+    recreate_pickle = raw_input("Recreate pickled associations object? Enter y/n: ")
 
     if insert_posts == "y":
         insert_posts_into_db(db, data_json_path)
 
-    if os.path.isfile(pickled_path):
-        a = load_pickle()
-    else:
+    if recreate_pickle == "y" or not os.path.isfile(pickled_path):
         a = Associations(data_json_path, symptom_path, drugs_path)
         a.train(db)
         save_pickle()
+    else:
+        a = load_pickle()
 
         
     # Associations

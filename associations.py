@@ -184,11 +184,14 @@ def get_baskets(db, parents, grandparents):
         baskets[keyword] = set()
 
     for post in db.query(Post).all():
-        for i, word in enumerate(post.lemmatized):
-            parent = parents[word]
+        i = 0
+        for lemmatized_word in custom_split(post.lemmatized):
+            parent = parents[lemmatized_word]
             if parent in grandparents:
-                baskets[parent].add(post.lemmatized[i])
+                # Capture both lemmatized and original abbreviation
+                baskets[parent].add(lemmatized_word)
                 baskets[parent].add(post.original[i])
+            i += 1
 
     return baskets
             
@@ -406,7 +409,6 @@ def save_pickle():
 
 if __name__ == "__main__":
     db = get_session()
-
     processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
     word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
     data_json_path = os.path.join(processed_data_folder, 'data.json')

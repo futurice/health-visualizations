@@ -75,7 +75,7 @@ def show_drug(drug):
 @cache.cached()
 def symptoms():
     try:
-        symptoms = get_session().query(Symptom).one()
+        symptoms = get_session().query(Symptom).all()
         return jsonify([s.name for s in symptoms]), 200, CONTENT_TYPE
     except NoResultFound:
         return 'Not found', 404, CONTENT_TYPE

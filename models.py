@@ -4,6 +4,7 @@ from operator import and_
 
 import sqlalchemy  
 from sqlalchemy import Column, Integer, Text, Index, String
+from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base  
 from sqlalchemy.orm import sessionmaker, aliased
@@ -20,6 +21,7 @@ except:
     PSQL_USERNAME = os.environ['PSQL_USERNAME']
     PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
     PSQL_DB = os.environ['PSQL_DB']
+    PSQL_DB = 'do8lpb57a1pia'
     PSQL_URL = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
 
 db = sqlalchemy.create_engine(PSQL_URL)
@@ -67,7 +69,7 @@ class Post(Base):
             Table2 = aliased(Bridge_Symptom_Post)
             condition2 = Table2.symptom_id == res2.id
         sq = query_builder(db_session, Table1, Table2, condition1, condition2)
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id).limit(20).all()
         return posts
 
     @staticmethod

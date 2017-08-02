@@ -446,13 +446,6 @@ if __name__ == "__main__":
     symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
     pickled_path = "associations_object"
 
-
-
-    # temp
-    a = load_pickle()
-    get_baskets(db, a.drug_parents, a.drug_grandparents)
-
-
     print "If you are running this for the first time, just enter \"y\" on everything."
     insert_posts = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
     insert_drugs_symptoms = raw_input("Insert drugs and symptoms to db? Enter y/n: ")

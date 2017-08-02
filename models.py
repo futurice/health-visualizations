@@ -1,17 +1,18 @@
-
-import json
-from operator import and_
-
-import sqlalchemy  
-from sqlalchemy import Column, Integer, Text, Index, String
+from __future__ import print_function
+import sqlalchemy
+import sys
+from sqlalchemy import Column, Integer, Text, Index, String, and_
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base  
-from sqlalchemy.orm import sessionmaker, aliased
+from sqlalchemy.orm import sessionmaker, aliased, query
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 
 import os
+
+# Page size for sample quotes
+PAGE_SIZE = 20
 
 try:
     # Staging and production on Heroku
@@ -21,7 +22,7 @@ except:
     PSQL_USERNAME = os.environ['PSQL_USERNAME']
     PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
     PSQL_DB = os.environ['PSQL_DB']
-    PSQL_DB = 'do8lpb57a1pia'
+    #PSQL_DB = 'do8lpb57a1pia'
     PSQL_URL = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
 
 db = sqlalchemy.create_engine(PSQL_URL)
@@ -32,13 +33,15 @@ def get_db ():
     return db
 
 def get_session():
-    # This should be called only once! Persistence problems otherwise.
     SessionFactory = sessionmaker(engine) 
     session = SessionFactory()
     return session
 
 Base = declarative_base()
 
+# For debugging, prints raw SQL query produced by SQLAlchemy
+def print_query(q):
+    print(str(q.statement.compile(dialect=postgresql.dialect())), file=sys.stderr)
 
 # Helper method for Post.find_related_quotes()
 def query_builder(session, Table1, Table2, condition1, condition2):
@@ -55,7 +58,8 @@ class Post(Base):
     lemmatized = Column(Text, unique=False)
 
     @staticmethod
-    def find_related_quotes(db_session, res1, res2):
+    def find_related_quotes(db_session, res1, res2, page):
+        page = int(page)
         if Drug == type(res1):
             Table1 = Bridge_Drug_Post
             condition1 = Table1.drug_id == res1.id
@@ -69,15 +73,23 @@ class Post(Base):
             Table2 = aliased(Bridge_Symptom_Post)
             condition2 = Table2.symptom_id == res2.id
         sq = query_builder(db_session, Table1, Table2, condition1, condition2)
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id).limit(20).all()
+        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)\
+            .offset((page - 1) * PAGE_SIZE)\
+            .limit(PAGE_SIZE)
+        print_query(posts)
         return posts
 
     @staticmethod
-    def find_dosage_quotes(drug_name, dosage):
+    def find_dosage_quotes(drug_name, dosage, page):
+        page = int(page)
         db_session = get_session()
         drug = Drug.find_drug(db_session, drug_name)
-        bridges = db_session.query(Bridge_Dosage_Quote).filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
-                                                                    Bridge_Dosage_Quote.dosage_mg == dosage))
+        bridges = db_session.query(Bridge_Dosage_Quote)\
+            .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
+                         Bridge_Dosage_Quote.dosage_mg == dosage))\
+            .offset((page - 1) * PAGE_SIZE)\
+            .limit(PAGE_SIZE)
+
         post_ids = [bridge.post_id for bridge in bridges]
         post_originals = db_session.query(Post.original).filter(Post.id.in_(post_ids))
         return [x for x in post_originals]  # query to list
@@ -158,7 +170,7 @@ def create_index(index_name, table_field):
         idx = Index(index_name, table_field)
         idx.create(bind=engine)
     except:
-        print 'Skipping ', index_name
+        print('Skipping ', index_name)
         pass
 
 if __name__ == "__main__":
@@ -166,7 +178,7 @@ if __name__ == "__main__":
         meta.reflect()
         meta.drop_all()
     else:
-        print "Ok, we can try to insert new tables, but existing tables won't be touched."
+        print("Ok, we can try to insert new tables, but existing tables won't be touched.")
 
     # Create / update schema
     Base.metadata.create_all(engine)

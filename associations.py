@@ -184,15 +184,44 @@ def get_baskets(db, parents, grandparents):
         baskets[keyword] = set()
 
     for post in db.query(Post).all():
-        i = 0
-        original_split = custom_split(post.original)
-        for lemmatized_word in custom_split(post.lemmatized):
-            parent = parents[lemmatized_word]
-            if parent in grandparents:
-                # Capture both lemmatized and original abbreviation
-                baskets[parent].add(lemmatized_word)
-                baskets[parent].add(original_split[i])
+        # First split by space, then split elements individually by custom split function.
+        # Do not refactor the space split away (Finnish-Dep-Parser does weird things to long words,
+        # causing custom split to return different lengths to original and lemmatized versions of post)
+        i = -1
+        original_elements = post.original.split(' ')
+        lemmatized_elements = post.lemmatized.split(' ')
+        for orig_element in original_elements:
             i += 1
+            lemm_element = lemmatized_elements[i]
+
+            original_words_of_element = custom_split(orig_element)
+            lemmatized_words_of_element = custom_split(lemm_element)
+
+            # Original "words of element" may be longer than lemmatized "words of element".
+            # Iterate lemmatized words and skip any additional "original words of element".
+            # Example why this parsing is necessary:
+            #   Original element: lehtihaku_view_article_war_dlehtihaku&amp;p_p_action=1&amp;p_p_state=maximized
+            #   Lemmatized element: lehtihaku_view_article_war_dle-(((31)))-maximized
+            #   If we simply called custom_split on original post and lemmatized post, the splits would
+            #   yield different lengths (due to splitting by '&' character, in this example). Then it would
+            #   not be possible to say which original word corresponds to which lemmatized word.
+            try:
+                j = -1
+                for lemm_word in lemmatized_words_of_element:
+                    j += 1
+                    orig_word = original_words_of_element[j]
+                    parent = parents[lemm_word]
+                    if parent in grandparents:
+                        baskets[parent].add(lemm_word)
+                        baskets[parent].add(orig_word)
+            except:
+                print 'ERRROROROROR', len(original_words_of_element), 'vs', len(lemmatized_words_of_element)
+                print '     Orig post:', post.original
+                print '     Lemm post:', post.lemmatized
+                print '              i =', i
+                print '    Orig element:', orig_element
+                print '    Lemm element:', lemm_element
+                raise
 
     return baskets
             
@@ -417,6 +446,13 @@ if __name__ == "__main__":
     symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
     pickled_path = "associations_object"
 
+
+
+    # temp
+    a = load_pickle()
+    get_baskets(db, a.drug_parents, a.drug_grandparents)
+
+
     print "If you are running this for the first time, just enter \"y\" on everything."
     insert_posts = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
     insert_drugs_symptoms = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
@@ -491,6 +527,8 @@ if __name__ == "__main__":
                 if len(term) > 64:
                     # This table exists to help user searches. Assuming users don't need to search with super long terms.
                     continue
+                if term == u'ketipinor-nimisen':
+                    print 'HTIJDOFIOSDF ', drug.id
                 db.add(Search_Term(name=term, drug_id=drug.id, symptom_id=None))
                 db.commit()
         for symptom in db.query(Symptom).all():

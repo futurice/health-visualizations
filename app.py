@@ -24,7 +24,7 @@ CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
 @app.route("/test")
 def route_test():
-    return "works", 200, CONTENT_TYPE
+    return str(__name__), 200, CONTENT_TYPE
 
 @app.route("/drugs")
 @cache.cached()
@@ -32,15 +32,15 @@ def drugs():
     drugs = get_session().query(Drug).all()
     return jsonify([d.name for d in drugs]), 200, CONTENT_TYPE
 
-@app.route("/dosage_quotes/<drug>/<dosage>")
+@app.route("/dosage_quotes/<drug>/<dosage>/page/<page>")
 @cache.cached()
-def dosage_quotes(drug, dosage):
-    quotes = Post.find_dosage_quotes(drug, dosage)
+def dosage_quotes(drug, dosage, page):
+    quotes = Post.find_dosage_quotes(drug, dosage, page)
     return jsonify(quotes), 200, CONTENT_TYPE
 
-@app.route("/related_quotes/<key1>/<key2>")
+@app.route("/related_quotes/<key1>/<key2>/page/<page>")
 @cache.cached()
-def related_quotes(key1, key2):
+def related_quotes(key1, key2, page):
     db_session = get_session()
 
     try:
@@ -49,7 +49,7 @@ def related_quotes(key1, key2):
     except NoResultFound:
         return 'Not found', 404, CONTENT_TYPE
 
-    posts = Post.find_related_quotes(db_session, res1, res2)
+    posts = Post.find_related_quotes(db_session, res1, res2, page)
     posts = [str(x).decode('utf-8') for x in posts]
     return jsonify(posts), 200, CONTENT_TYPE
 

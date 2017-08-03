@@ -2,17 +2,11 @@ from __future__ import print_function # In python 2.7
 import time
 
 import sys
-from flask import Flask, jsonify, json, request
+from flask import Flask, jsonify
 from models import Drug, Symptom
-from sqlalchemy.ext.declarative import declarative_base  
-from sqlalchemy.orm import sessionmaker
-import sqlalchemy
-from sqlalchemy import Integer, and_
-from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import aliased
 from sqlalchemy.orm.exc import NoResultFound
-from models import get_session, Bridge_Symptom_Post, Bridge_Drug_Post, Bridge_Dosage_Quote, Post, Search_Term
-from flask_cors import CORS, cross_origin
+from models import get_session, Post, Search_Term
+from flask_cors import CORS
 from flask_caching import Cache
 
 app = Flask(__name__)

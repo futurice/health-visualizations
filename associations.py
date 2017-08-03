@@ -180,6 +180,12 @@ def count_associations(keyword, parents, grandparents, postSets):
 def get_baskets(db, parents, grandparents):
     baskets = dict()
 
+    # Finnish-Dep-Parser sometimes lemmatizes "novia" into "novia", sometimes into "nova".
+    # Furthermore, these lemmatized forms end up with different parents (themselves).
+    # This makes it ambiguous which parent is referred to with potential search term "novia".
+    # Since it's just this 1 case, we will print a warning and arbitrarily add it into 1 basket only.
+    seen_search_terms = dict()
+
     for keyword in grandparents:
         baskets[keyword] = set()
 
@@ -205,23 +211,22 @@ def get_baskets(db, parents, grandparents):
             #   If we simply called custom_split on original post and lemmatized post, the splits would
             #   yield different lengths (due to splitting by '&' character, in this example). Then it would
             #   not be possible to say which original word corresponds to which lemmatized word.
-            try:
-                j = -1
-                for lemm_word in lemmatized_words_of_element:
-                    j += 1
-                    orig_word = original_words_of_element[j]
-                    parent = parents[lemm_word]
-                    if parent in grandparents:
+            j = -1
+            for lemm_word in lemmatized_words_of_element:
+                j += 1
+                orig_word = original_words_of_element[j]
+                parent = parents[lemm_word]
+                if parent in grandparents:
+                    if lemm_word not in seen_search_terms:
                         baskets[parent].add(lemm_word)
+                        seen_search_terms[lemm_word] = parent
+                    elif parent != seen_search_terms[lemm_word]:
+                        print 'Ambiguous search term', lemm_word, 'has 2 parents', parent, 'and', seen_search_terms[lemm_word]
+                    if orig_word not in seen_search_terms:
                         baskets[parent].add(orig_word)
-            except:
-                print 'ERRROROROROR', len(original_words_of_element), 'vs', len(lemmatized_words_of_element)
-                print '     Orig post:', post.original
-                print '     Lemm post:', post.lemmatized
-                print '              i =', i
-                print '    Orig element:', orig_element
-                print '    Lemm element:', lemm_element
-                raise
+                        seen_search_terms[lemm_word] = parent
+                    elif parent != seen_search_terms[orig_word]:
+                        print 'Ambiguous search term', orig_word, 'has 2 parents', parent, 'and', seen_search_terms[orig_word]
 
     return baskets
             
@@ -514,14 +519,13 @@ if __name__ == "__main__":
         db.commit()
 
     # Search terms to db
+    seen_search_terms = set()
     if insert_search_terms == "y":
         for drug in db.query(Drug).all():
             for term in drug.data["basket"]:
                 if len(term) > 64:
                     # This table exists to help user searches. Assuming users don't need to search with super long terms.
                     continue
-                if term == u'ketipinor-nimisen':
-                    print 'HTIJDOFIOSDF ', drug.id
                 db.add(Search_Term(name=term, drug_id=drug.id, symptom_id=None))
                 db.commit()
         for symptom in db.query(Symptom).all():

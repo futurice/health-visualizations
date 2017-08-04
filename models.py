@@ -169,6 +169,7 @@ def create_index(index_name, table_field):
     try:
         idx = Index(index_name, table_field)
         idx.create(bind=engine)
+        print('Creating index', index_name)
     except:
         print('Skipping ', index_name)
         pass
@@ -178,17 +179,19 @@ if __name__ == "__main__":
         meta.reflect()
         meta.drop_all()
     else:
-        print("Ok, we can try to insert new tables, but existing tables won't be touched.")
+        print("Ok, we can try to add new tables and indexes, but existing tables won't be otherwise modified.")
 
     # Create / update schema
     Base.metadata.create_all(engine)
 
     # Create indexes if they don't exist
-    create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
-    create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
-    create_index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
-    create_index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
-    create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
-    create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
-    create_index('search_terms_index', Search_Term.name)
+    if raw_input("Create indexes? Note that it is much faster AFTER data has been added. Enter y/n: ") == "y":
+        create_index('posts_idx', Post.id)
+        create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
+        create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
+        create_index('bridge_drug_post_drug_id_idx', Bridge_Drug_Post.drug_id)
+        create_index('bridge_symptom_post_id_idx', Bridge_Symptom_Post.id)
+        create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
+        create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
+        create_index('search_terms_index', Search_Term.name)
 

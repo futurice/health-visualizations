@@ -4,7 +4,7 @@ import sys
 from sqlalchemy import Column, Integer, Text, Index, String, and_
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
-from sqlalchemy.ext.declarative import declarative_base  
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, aliased, query
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -74,12 +74,17 @@ class Post(db.Model):
         else:
             Table2 = aliased(Bridge_Symptom_Post)
             condition2 = Table2.symptom_id == res2.id
+
         sq = query_builder(db_session, Table1, Table2, condition1, condition2)
-        posts = db_session.query(Post.original).join(sq, sq.c.post_id == Post.id)\
-            .offset((page - 1) * PAGE_SIZE)\
+        posts = (
+            db_session
+            .query(Post.original)
+            .join(sq, sq.c.post_id == Post.id)
+            .offset((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
+        )
         print_query(posts)
-        return posts
+        return posts.all()
 
     @staticmethod
     def find_dosage_quotes(drug_name, dosage, page):
@@ -195,4 +200,3 @@ if __name__ == "__main__":
         create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
         create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
         create_index('search_terms_index', Search_Term.name)
-

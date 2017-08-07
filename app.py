@@ -37,7 +37,7 @@ def dosage_quotes(drug, dosage, page):
 
 @cache.cached()
 def find_search_term(session, key):
-    print('LOOKING UP DB FOR ', key)
+    print('LOOKING UP DB FOR ' + key, file=sys.stderr)
     return Search_Term.find_drug_or_symptom(session, key)
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")

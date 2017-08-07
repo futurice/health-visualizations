@@ -1,3 +1,4 @@
+# App
 Flask==0.12.2
 psycopg2==2.7.1
 sqlalchemy==1.1.11
@@ -6,4 +7,6 @@ flask-cors
 flask-caching
 flask-sqlalchemy
 gunicorn
-
+# Debugging
+ipython
+line-profiler

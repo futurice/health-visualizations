@@ -7,6 +7,10 @@ flask-cors
 flask-caching
 flask-sqlalchemy
 gunicorn
+gevent
+greenlet
+psycogreen
+
 # Debugging
 ipython
 line-profiler

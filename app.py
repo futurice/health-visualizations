@@ -35,7 +35,6 @@ def dosage_quotes(drug, dosage, page):
 
     return jsonify(quotes), 200, CONTENT_TYPE
 
-@cache.cached()
 def find_search_term(session, key):
     print('LOOKING UP DB FOR ' + key, file=sys.stderr)
     return Search_Term.find_drug_or_symptom(session, key)

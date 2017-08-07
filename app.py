@@ -50,6 +50,9 @@ def related_quotes(key1, key2, page):
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+        print('************* KEY1 CORRESPONDS TO ' + res1.name, file=sys.stderr)
+        print('************* KEY2 CORRESPONDS TO ' + res2.name, file=sys.stderr)
+
         posts = Post.find_related_quotes(session, res1, res2, page)
         posts = [str(x).decode('utf-8') for x in posts]
 

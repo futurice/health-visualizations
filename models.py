@@ -8,6 +8,8 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, aliased, query
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 
 import os
 
@@ -25,19 +27,19 @@ except:
     #PSQL_DB = 'do8lpb57a1pia'
     PSQL_URL = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
 
-db = sqlalchemy.create_engine(PSQL_URL)
-engine = db.connect()  
-meta = sqlalchemy.MetaData(engine)
+app = Flask('app')
+app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
 
-def get_db ():
+def get_app():
+    return app
+
+def get_db():
     return db
 
 def get_session():
-    SessionFactory = sessionmaker(engine) 
-    session = SessionFactory()
-    return session
-
-Base = declarative_base()
+    return db.session
 
 # For debugging, prints raw SQL query produced by SQLAlchemy
 def print_query(q):
@@ -50,7 +52,7 @@ def query_builder(session, Table1, Table2, condition1, condition2):
         .filter(and_(condition1, condition2))\
         .subquery()
 
-class Post(Base):
+class Post(db.Model):
     __tablename__ = 'posts'
 
     id = Column(Integer, primary_key=True)
@@ -94,7 +96,7 @@ class Post(Base):
         post_originals = db_session.query(Post.original).filter(Post.id.in_(post_ids))
         return [x for x in post_originals]  # query to list
 
-class Drug(Base):
+class Drug(db.Model):
     __tablename__ = 'drugs'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
@@ -104,7 +106,7 @@ class Drug(Base):
     def find_drug(db_session, search_term):
         return db_session.query(Drug).join(Search_Term, Search_Term.drug_id == Drug.id).filter(Search_Term.name == search_term).one()
 
-class Symptom(Base):
+class Symptom(db.Model):
     __tablename__ = 'symptoms'
     id = Column(Integer, primary_key=True)
     name = Column(Text, unique=True)
@@ -114,7 +116,7 @@ class Symptom(Base):
     def find_symptom(db_session, search_term):
         return db_session.query(Symptom).join(Search_Term, Search_Term.symptom_id == Symptom.id).filter(Search_Term.name == search_term).one()
 
-class Search_Term(Base):
+class Search_Term(db.Model):
     __tablename__ = 'search_terms'
     id = Column(Integer, primary_key=True)
     name = Column(String(64), nullable=False, unique=True)
@@ -132,7 +134,7 @@ class Search_Term(Base):
         else:
             return db_session.query(Symptom).filter(Symptom.id == res.symptom_id).one()
 
-class Bridge_Dosage_Quote(Base):
+class Bridge_Dosage_Quote(db.Model):
     __tablename__ = 'bridge_dosage_quotes'
 
     id = Column(Integer, primary_key=True)
@@ -143,7 +145,7 @@ class Bridge_Dosage_Quote(Base):
     ref_post = relationship(Post, backref="bridge_dosage_quotes")
     ref_drug = relationship(Drug, backref="bridge_dosage_quotes")
 
-class Bridge_Drug_Post(Base):
+class Bridge_Drug_Post(db.Model):
     __tablename__ = 'bridge_drug_posts'
 
     id = Column(Integer, primary_key=True)
@@ -154,7 +156,7 @@ class Bridge_Drug_Post(Base):
     ref_drug = relationship(Drug, backref="bridge_drug_posts")
 
 
-class Bridge_Symptom_Post(Base):
+class Bridge_Symptom_Post(db.Model):
     __tablename__ = 'bridge_symptom_posts'
 
     id = Column(Integer, primary_key=True)
@@ -168,7 +170,7 @@ class Bridge_Symptom_Post(Base):
 def create_index(index_name, table_field):
     try:
         idx = Index(index_name, table_field)
-        idx.create(bind=engine)
+        idx.create(bind=db.engine)
         print('Creating index', index_name)
     except:
         print('Skipping ', index_name)
@@ -176,13 +178,12 @@ def create_index(index_name, table_field):
 
 if __name__ == "__main__":
     if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
-        meta.reflect()
-        meta.drop_all()
+        db.drop_all()
     else:
         print("Ok, we can try to add new tables and indexes, but existing tables won't be otherwise modified.")
 
     # Create / update schema
-    Base.metadata.create_all(engine)
+    db.create_all()
 
     # Create indexes if they don't exist
     if raw_input("Create indexes? Note that it is much faster AFTER data has been added. Enter y/n: ") == "y":

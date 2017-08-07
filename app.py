@@ -5,12 +5,11 @@ import sys
 from flask import Flask, jsonify
 from models import Drug, Symptom
 from sqlalchemy.orm.exc import NoResultFound
-from models import get_session, Post, Search_Term
+from models import get_app, get_session, Post, Search_Term
 from flask_cors import CORS
 from flask_caching import Cache
 
-app = Flask(__name__)
-#app.config['JSON_AS_ASCII'] = False
+app = get_app()
 CORS(app)
 cache = Cache(app,config={'CACHE_TYPE': 'simple'})
 
@@ -88,10 +87,10 @@ def show_symptom(symptom):
 @cache.cached()
 def common(resource):
     if resource == "drugs":
-        query = get_session().query(Drug).order_by(Drug.data['postCount'].desc())
-        results = [(drug.name, drug.data['postCount']) for drug in query.all()]
+        query = get_session().query(Drug).order_by(Drug.data['post_count'].desc())
+        results = [(drug.name, drug.data['post_count']) for drug in query.all()]
         return jsonify(results), 200, CONTENT_TYPE 
     elif resource == "symptoms":
-        query = get_session().query(Symptom).order_by(Symptom.data['postCount'].desc())
-        results = [(symptom.name, symptom.data['postCount']) for symptom in query.all()]
+        query = get_session().query(Symptom).order_by(Symptom.data['post_count'].desc())
+        results = [(symptom.name, symptom.data['post_count']) for symptom in query.all()]
         return jsonify(results), 200, CONTENT_TYPE

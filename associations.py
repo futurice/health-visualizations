@@ -215,8 +215,6 @@ class Word_Matcher():
 def get_baskets(db, parents, grandparents):
     baskets = dict()
 
-    seen_search_terms = dict()
-
     for keyword in grandparents:
         baskets[keyword] = set()
 
@@ -227,19 +225,8 @@ def get_baskets(db, parents, grandparents):
             orig_word = matcher.original[i]
             parent = parents[lemm_word]
             if parent in grandparents:
-
-                #TODO once it's clear these prints don't appear, remove all these checks
-                #TODO just add to basket thats all
-                if lemm_word not in seen_search_terms:
-                    baskets[parent].add(lemm_word)
-                    seen_search_terms[lemm_word] = parent
-                elif parent != seen_search_terms[lemm_word]:
-                    print 'Ambiguous search term', lemm_word, 'has 2 parents', parent, 'and', seen_search_terms[lemm_word]
-                if orig_word not in seen_search_terms:
-                    baskets[parent].add(orig_word)
-                    seen_search_terms[lemm_word] = parent
-                elif parent != seen_search_terms[orig_word]:
-                    print 'Ambiguous search term', orig_word, 'has 2 parents', parent, 'and', seen_search_terms[orig_word]
+                baskets[parent].add(lemm_word)
+                baskets[parent].add(orig_word)
 
     return baskets
 
@@ -284,7 +271,7 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
 
             
 def calculate_lift(grandparents, post_sets, counts, post_counts, keyword, number_of_posts, minimum_sample_size_for_found_associations):
-    # Bayesian probability: calculate how much 'keyword' increases the prevalence of special words
+    # How much 'keyword' increases the prevalence of special words
     lift = {}
     for parent in grandparents:
         freq_all = 1.0 * post_counts[parent] / number_of_posts
@@ -544,8 +531,6 @@ if __name__ == "__main__":
     data_json_path = os.path.join(processed_data_folder, 'data.json')
     drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
     symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
-
-    #insert_search_terms_into_db(db)
 
     print "If you are running this for the first time, just enter \"y\" on everything."
     bool_insert_posts_into_db = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")

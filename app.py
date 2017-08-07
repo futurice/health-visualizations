@@ -5,7 +5,7 @@ import sys
 from flask import Flask, jsonify
 from models import Drug, Symptom
 from sqlalchemy.orm.exc import NoResultFound
-from models import app, db, get_session, Post, Search_Term
+from models import app, db, Post, Search_Term
 from services import db_session
 from flask_cors import CORS
 from flask_caching import Cache
@@ -30,7 +30,9 @@ def drugs():
 @app.route("/dosage_quotes/<drug>/<dosage>/page/<page>")
 @cache.cached()
 def dosage_quotes(drug, dosage, page):
-    quotes = Post.find_dosage_quotes(drug, dosage, page)
+    with db_session(db) as session:
+        quotes = Post.find_dosage_quotes(session, drug, dosage, page)
+
     return jsonify(quotes), 200, CONTENT_TYPE
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")

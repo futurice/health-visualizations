@@ -74,9 +74,8 @@ class Post(db.Model):
         return posts
 
     @staticmethod
-    def find_dosage_quotes(drug_name, dosage, page):
+    def find_dosage_quotes(db_session, drug_name, dosage, page):
         page = int(page)
-        db_session = get_session()
         drug = Drug.find_drug(db_session, drug_name)
         bridges = db_session.query(Bridge_Dosage_Quote)\
             .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,

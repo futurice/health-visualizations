@@ -82,11 +82,15 @@ class Post(db.Model):
     def find_dosage_quotes(db_session, drug_name, dosage, page):
         page = int(page)
         drug = Drug.find_drug(db_session, drug_name)
-        bridges = db_session.query(Bridge_Dosage_Quote)\
+        bridges = (
+            db_session
+            .query(Bridge_Dosage_Quote)
             .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
-                         Bridge_Dosage_Quote.dosage_mg == dosage))\
-            .offset((page - 1) * PAGE_SIZE)\
+                         Bridge_Dosage_Quote.dosage_mg == dosage))
+            .offset((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
+            .all()
+        )
 
         post_ids = [bridge.post_id for bridge in bridges]
         post_originals = db_session.query(Post.original).filter(Post.id.in_(post_ids))

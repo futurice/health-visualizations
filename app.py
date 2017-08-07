@@ -35,13 +35,17 @@ def dosage_quotes(drug, dosage, page):
 
     return jsonify(quotes), 200, CONTENT_TYPE
 
+@cache.cached()
+def find_search_term(session, key):
+    return Search_Term.find_drug_or_symptom(session, key)
+
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
 @cache.cached()
 def related_quotes(key1, key2, page):
     with db_session(db) as session:
         try:
-            res1 = Search_Term.find_drug_or_symptom(session, key1)
-            res2 = Search_Term.find_drug_or_symptom(session, key2)
+            res1 = find_search_term(session, key1)
+            res2 = find_search_term(session, key2)
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
@@ -55,7 +59,7 @@ def related_quotes(key1, key2, page):
 def show_drug_or_symptom(term):
     with db_session(db) as session:
         try:
-            res = Search_Term.find_drug_or_symptom(session, term)
+            res = find_search_term(session, term)
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 

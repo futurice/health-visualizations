@@ -32,14 +32,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-def get_app():
-    return app
-
-def get_db():
-    return db
-
-def get_session():
-    return db.session
 
 # For debugging, prints raw SQL query produced by SQLAlchemy
 def print_query(q):

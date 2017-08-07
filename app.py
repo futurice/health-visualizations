@@ -44,7 +44,7 @@ def related_quotes(key1, key2, page):
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
             posts = Post.find_related_quotes(session, res1, res2, page)
-            posts = [str(x).decode('utf-8') for x in posts]
+            posts = [x for x in posts] #[str(x).decode('utf-8') for x in posts]
             return jsonify(posts), 200, CONTENT_TYPE
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE

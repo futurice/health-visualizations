@@ -4,7 +4,7 @@ import sys
 from sqlalchemy import Column, Integer, Text, Index, String, and_
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
-from sqlalchemy.ext.declarative import declarative_base  
+from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, aliased, query
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
@@ -32,14 +32,6 @@ app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-def get_app():
-    return app
-
-def get_db():
-    return db
-
-def get_session():
-    return db.session
 
 # For debugging, prints raw SQL query produced by SQLAlchemy
 def print_query(q):
@@ -195,4 +187,3 @@ if __name__ == "__main__":
         create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
         create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
         create_index('search_terms_index', Search_Term.name)
-

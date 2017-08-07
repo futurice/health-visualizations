@@ -11,10 +11,14 @@ import csv
 from random import shuffle
 import editdistance as edt
 import cPickle as pickle
-import dosages 
+import dosages
 
 # For adding to DB
-from models import Drug, Symptom, Post, get_session, Bridge_Drug_Post, Bridge_Symptom_Post, get_db, Search_Term
+from models import (
+    Drug, Symptom, Post, Bridge_Drug_Post, Bridge_Symptom_Post,
+    Search_Term, db
+)
+from services import db_session
 from sqlalchemy.exc import IntegrityError
 
 from progress_indicator import Progress_indicator
@@ -29,7 +33,7 @@ def custom_split(words):
 
 def custom_split_stemmed(words):
     return custom_split(words.split('~')[1])
-    
+
 def custom_split_original(words):
     return custom_split(words.split('~')[0])
 
@@ -61,7 +65,7 @@ def merge_stems(parents, stem1, stem2):
         parents[stem1] = stem2
     else:
         parents[stem2] = stem1
-    
+
 def merge_similar(parents, words):
     # Iterate given set, merge similar words. Parents will be modified.
     word_list = list(words)
@@ -71,13 +75,13 @@ def merge_similar(parents, words):
             stem2 = word_list[j]
             len1 = len(stem)
             len2 = len(stem2)
-    
+
             # Merge stems which are substrings of each others' start
             # For longer stems also merge when editdistance=1 (SSRI != SNRI)
             if (len1 >= 6 and len2 >= 6 and get_edit_distance(stem, stem2) == 1) \
             or (stem.startswith(stem2) or stem2.startswith(stem)):
                 merge_stems(parents, stem, stem2)
-                
+
 def update_parenthood(parents, words):
     # Update parents to point at grandparent
     for stem in words:
@@ -269,7 +273,7 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
             fix_potential_ambiguity_for_word(lemm_word, parent, parents, seen)
             fix_potential_ambiguity_for_word(orig_word, parent, parents, seen)
 
-            
+
 def calculate_lift(grandparents, post_sets, counts, post_counts, keyword, number_of_posts, minimum_sample_size_for_found_associations):
     # How much 'keyword' increases the prevalence of special words
     lift = {}
@@ -282,7 +286,7 @@ def calculate_lift(grandparents, post_sets, counts, post_counts, keyword, number
         or counts[parent] < minimum_sample_size_for_found_associations:
             continue
         lift[parent] = (100 * freq_assoc / freq_all) - 100
-    # We don't want to plot the keyword itself 
+    # We don't want to plot the keyword itself
     if keyword in lift:
         del lift[keyword]
     return lift
@@ -354,7 +358,7 @@ class Associations:
         self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
-        map_abbreviations(self.drug_grandparents, self.drug_parents, self.vocab)            
+        map_abbreviations(self.drug_grandparents, self.drug_parents, self.vocab)
 
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
@@ -459,7 +463,7 @@ def insert_drugs_or_symptoms_into_db(db, resource_name, grandparents, baskets, r
         created_json = dict()
         real_name = representatives[resource]
         drug_assoc, drug_counts, symptom_assoc, symptom_counts = a.associated(resource)
-        
+
         associated_drugs = dict()
         associated_symptoms = dict()
 
@@ -524,38 +528,39 @@ def insert_posts_into_db(db, data_json_path):
     db.execute("COPY posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
     db.commit()
 
+
 if __name__ == "__main__":
-    db = get_session()
-    processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
-    word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
-    data_json_path = os.path.join(processed_data_folder, 'data.json')
-    drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
-    symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
+    with db_session(db) as session:
+        processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
+        word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
+        data_json_path = os.path.join(processed_data_folder, 'data.json')
+        drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
+        symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
 
-    print "If you are running this for the first time, just enter \"y\" on everything."
-    bool_insert_posts_into_db = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
-    bool_insert_drugs_and_symptoms_into_db = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
-    bool_insert_dosages_into_db = raw_input("Insert dosages to db? Enter y/n: ")
-    bool_insert_postset_bridges_into_db = raw_input("Insert postset bridges to db? Enter y/n: ")
-    bool_insert_search_terms_into_db = raw_input("Insert search terms to db? Enter y/n: ")
+        print "If you are running this for the first time, just enter \"y\" on everything."
+        bool_insert_posts_into_db = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
+        bool_insert_drugs_and_symptoms_into_db = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
+        bool_insert_dosages_into_db = raw_input("Insert dosages to db? Enter y/n: ")
+        bool_insert_postset_bridges_into_db = raw_input("Insert postset bridges to db? Enter y/n: ")
+        bool_insert_search_terms_into_db = raw_input("Insert search terms to db? Enter y/n: ")
 
-    if bool_insert_posts_into_db == "y":
-        insert_posts_into_db(db, data_json_path)
+        if bool_insert_posts_into_db == "y":
+            insert_posts_into_db(session, data_json_path)
 
-    a = Associations(symptom_path, drugs_path)
-    a.train(db)
+        a = Associations(symptom_path, drugs_path)
+        a.train(session)
 
-    if bool_insert_drugs_and_symptoms_into_db == "y":
-        insert_drugs_or_symptoms_into_db(db, "symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_post_counts)
-        insert_drugs_or_symptoms_into_db(db, "drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_post_counts)
+        if bool_insert_drugs_and_symptoms_into_db == "y":
+            insert_drugs_or_symptoms_into_db(session, "symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_post_counts)
+            insert_drugs_or_symptoms_into_db(session, "drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_post_counts)
 
-    if bool_insert_dosages_into_db == "y":
-        d = dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)
-        a.drug_dosages = d.train(db)
+        if bool_insert_dosages_into_db == "y":
+            d = dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)
+            a.drug_dosages = d.train(session)
 
-    if bool_insert_postset_bridges_into_db == "y":
-        insert_postset_bridges_into_db(db, a.drug_representatives, a.drug_post_sets, Drug, 'bridge_drug_posts', 'drug_id')
-        insert_postset_bridges_into_db(db, a.symptom_representatives, a.symptom_post_sets, Symptom, 'bridge_symptom_posts', 'symptom_id')
+        if bool_insert_postset_bridges_into_db == "y":
+            insert_postset_bridges_into_db(session, a.drug_representatives, a.drug_post_sets, Drug, 'bridge_drug_posts', 'drug_id')
+            insert_postset_bridges_into_db(session, a.symptom_representatives, a.symptom_post_sets, Symptom, 'bridge_symptom_posts', 'symptom_id')
 
-    if bool_insert_search_terms_into_db == "y":
-        insert_search_terms_into_db(db)
+        if bool_insert_search_terms_into_db == "y":
+            insert_search_terms_into_db(session)

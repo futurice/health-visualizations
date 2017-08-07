@@ -195,3 +195,5 @@ if __name__ == "__main__":
         create_index('bridge_symptom_post_post_id_idx', Bridge_Symptom_Post.post_id)
         create_index('bridge_symptom_post_symptom_id_idx', Bridge_Symptom_Post.symptom_id)
         create_index('search_terms_index', Search_Term.name)
+        create_index('search_terms_index_drug_id', Search_Term.drug_id)
+        create_index('search_terms_index_symptom_id', Search_Term.symptom_id)

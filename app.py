@@ -36,7 +36,6 @@ def dosage_quotes(drug, dosage, page):
     return jsonify(quotes), 200, CONTENT_TYPE
 
 def find_search_term(session, key):
-    print('LOOKING UP DB FOR ' + key, file=sys.stderr)
     return Search_Term.find_drug_or_symptom(session, key)
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
@@ -48,9 +47,6 @@ def related_quotes(key1, key2, page):
             res2 = find_search_term(session, key2)
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
-
-        print('************* KEY1 CORRESPONDS TO ' + res1.name, file=sys.stderr)
-        print('************* KEY2 CORRESPONDS TO ' + res2.name, file=sys.stderr)
 
         posts = Post.find_related_quotes(session, res1, res2, page)
         posts = [str(x).decode('utf-8') for x in posts]

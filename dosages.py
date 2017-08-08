@@ -76,16 +76,20 @@ class Dosages:
         self.drug_grandparents = drug_grandparents
         self.drug_representatives = drug_representatives
 
-    def train(self, db):
-        # Collects the amount of times a dose has been mentioned for each drug
+    # Calculates the amount of times a dose has been mentioned for each drug,
+    # populates bridge_dosage_quotes and updates drugs' data field
+    def populate(self, db):
 
-        print "Finding drug dosages"
+        if len(db.query(Bridge_Dosage_Quote).all()) > 0:
+            print 'Bridge_Dosage_Quotes table is not empty - skipping'
+            return
+        else:
+            print '\n\nPopulating Bridge_Dosage_Quotes table...'
+
         self.drug_dosages = dict()
 
         # Inserting one at a time is too slow, instead we'll write to CSV and copy CSV to Postgres.
         csv_file_path = os.path.abspath('/tmp/temp2.csv')
-
-
 
         # Collect drugs for fast referencing, initialize dicts
         drugs = {}
@@ -112,16 +116,16 @@ class Dosages:
                             continue
                         closest_drug_name = self.drug_representatives[closest_drug_name]
 
-                        if dosage not in self.drug_dosages[closest_drug_name]:
-                            self.drug_dosages[closest_drug_name][dosage] = 1
-                        else:
-                            self.drug_dosages[closest_drug_name][dosage] += 1
-
                         drug = drugs[closest_drug_name]
                         dosage_value = int(dosage.split("mg")[0])
                         if dosage_value > 10000:
                             # We don't believe anyone takes more than 10g of a medicine at once.
                             continue
+
+                        if dosage_value not in self.drug_dosages[closest_drug_name]:
+                            self.drug_dosages[closest_drug_name][dosage_value] = 1
+                        else:
+                            self.drug_dosages[closest_drug_name][dosage_value] += 1
 
                         # This is too slow, write to CSV instead and copy CSV to Postgres
                         #link = Bridge_Dosage_Quote(post_id=post_id, drug_id=drug.id, dosage_mg=dosage_value)
@@ -134,6 +138,7 @@ class Dosages:
         db.execute("COPY bridge_dosage_quotes FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
         db.commit()
 
+        # Also update data field of drugs to contain dosages
         for drug in db.query(Drug):
             drug.data["dosages"] = self.drug_dosages[drug.name]
             # Fix a persistence problem (make SQLAlchemy understand that the JSON field is updated.)

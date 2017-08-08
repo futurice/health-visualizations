@@ -12,6 +12,7 @@ from random import shuffle
 import editdistance as edt
 import cPickle as pickle
 import dosages
+from models import initialize_db, create_indexes
 
 # For adding to DB
 from models import (
@@ -408,8 +409,14 @@ Example call parameters: (db_session, a.drug_representatives, a.drug_postsets, D
 For performance reasons we write to file and then use Postgres COPY to import that file.
 (Directly inserting rows into the database 1 by 1 took forever)
 '''
-def insert_postset_bridges_into_db(db, representatives, post_sets, entity_class, table_name, id_type):
-    print 'Inserting postset bridges to db for', entity_class
+def populate_postset_bridges(db, representatives, post_sets, entity_class, table_name, id_type):
+
+    if len(db.query(entity_class).all()) > 0:
+        print entity_class, 'table is not empty - skipping'
+        return
+    else:
+        print '\n\nPopulating', entity_class, 'table...'
+
     progress_indicator = Progress_indicator(len(post_sets))
     csv_file_path = os.path.abspath('/tmp/temp_' + table_name + '.csv')
     with open(csv_file_path, 'wb') as csvfile:
@@ -444,7 +451,7 @@ def write_search_terms_to_csv(csv_writer, entity_class, next_free_id):
             next_free_id += 1
     return next_free_id
 
-def insert_search_terms_into_db(db):
+def populate_search_terms(db):
     print 'Inserting search terms to db...'
     csv_file_path = os.path.abspath('/tmp/temp_search_terms.csv')
     with open(csv_file_path, 'wb') as csvfile:
@@ -457,7 +464,13 @@ def insert_search_terms_into_db(db):
     db.commit()
 
 """ Create associations JSON for database for resource e.g "drugs" """
-def insert_drugs_or_symptoms_into_db(db, resource_name, grandparents, baskets, representatives, post_counts):
+def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, representatives, post_counts):
+
+    if len(db.query(entity_class).all()) > 0:
+        print entity_class, 'table is not empty - skipping'
+        return
+    else:
+        print '\n\nPopulating', entity_class, 'table...'
 
     for resource in grandparents:
         created_json = dict()
@@ -489,16 +502,10 @@ def insert_drugs_or_symptoms_into_db(db, resource_name, grandparents, baskets, r
         post_count = post_counts[resource]
         created_json["post_count"] = post_count
 
-        if resource_name == "drugs":
-            # Dosages will be calculated later
-            '''
-            if real_name in a.drug_dosages:
-                created_json["dosages"] = a.drug_dosages[real_name]
-            else:
-                created_json["dosages"] = {}
-            '''
+        if entity_class == Drug:
+            # Note: dosages will be calculated later and this field will be updated.
             res = Drug(name=real_name, data=created_json)
-        elif resource_name == "symptoms":
+        elif entity_class == Symptom:
             res = Symptom(name = real_name, data=created_json)
         try:
             db.add(res)
@@ -507,7 +514,13 @@ def insert_drugs_or_symptoms_into_db(db, resource_name, grandparents, baskets, r
             print "Already exists"
 
 
-def insert_posts_into_db(db, data_json_path):
+def populate_posts(db, data_json_path):
+    if len(db.query(Post).all()) > 0:
+        print 'Posts table is not empty - skipping'
+        return
+    else:
+        print '\n\nPopulating posts table...'
+
     print 'Loading', data_json_path
     with open(data_json_path) as file:
         data = json.load(file)
@@ -537,30 +550,28 @@ if __name__ == "__main__":
         drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
         symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
 
-        print "If you are running this for the first time, just enter \"y\" on everything."
-        bool_insert_posts_into_db = raw_input("Insert posts from data.json to db? Be wary of inserting duplicates. Enter y/n: ")
-        bool_insert_drugs_and_symptoms_into_db = raw_input("Insert drugs and symptoms to db? Enter y/n: ")
-        bool_insert_dosages_into_db = raw_input("Insert dosages to db? Enter y/n: ")
-        bool_insert_postset_bridges_into_db = raw_input("Insert postset bridges to db? Enter y/n: ")
-        bool_insert_search_terms_into_db = raw_input("Insert search terms to db? Enter y/n: ")
+        initialize_db()
 
-        if bool_insert_posts_into_db == "y":
-            insert_posts_into_db(session, data_json_path)
+        raw_input("We will populate any tables which are empty, then we will create indexes. Press enter to continue.")
 
+        # Posts must be populated first
+        populate_posts(session, data_json_path)
+
+        # Precalculate stuff to make later steps faster
         a = Associations(symptom_path, drugs_path)
         a.train(session)
 
-        if bool_insert_drugs_and_symptoms_into_db == "y":
-            insert_drugs_or_symptoms_into_db(session, "symptoms", a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_post_counts)
-            insert_drugs_or_symptoms_into_db(session, "drugs", a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_post_counts)
+        # Drugs and symptoms must be inserted to db before calculating dosages
+        populate_drugs_or_symptoms(session, Symptom, a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_post_counts)
+        populate_drugs_or_symptoms(session, Drug, a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_post_counts)
 
-        if bool_insert_dosages_into_db == "y":
-            d = dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)
-            a.drug_dosages = d.train(session)
+        # Calculate dosages; populate bridge_dosage_quotes and update drugs.data to include dosages
+        d = dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)
+        a.drug_dosages = d.populate(session)
 
-        if bool_insert_postset_bridges_into_db == "y":
-            insert_postset_bridges_into_db(session, a.drug_representatives, a.drug_post_sets, Drug, 'bridge_drug_posts', 'drug_id')
-            insert_postset_bridges_into_db(session, a.symptom_representatives, a.symptom_post_sets, Symptom, 'bridge_symptom_posts', 'symptom_id')
+        # Populate postset bridges and search term tables
+        populate_postset_bridges(session, a.drug_representatives, a.drug_post_sets, Drug, 'bridge_drug_posts', 'drug_id')
+        populate_postset_bridges(session, a.symptom_representatives, a.symptom_post_sets, Symptom, 'bridge_symptom_posts', 'symptom_id')
+        populate_search_terms(session)
 
-        if bool_insert_search_terms_into_db == "y":
-            insert_search_terms_into_db(session)
+        create_indexes(confirm=True)

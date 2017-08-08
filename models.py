@@ -176,17 +176,17 @@ def create_index(index_name, table_field):
         print('Skipping ', index_name)
         pass
 
-if __name__ == "__main__":
+def initialize_db():
     if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
         db.drop_all()
     else:
         print("Ok, we can try to add new tables and indexes, but existing tables won't be otherwise modified.")
-
     # Create / update schema
     db.create_all()
 
+def create_indexes(confirm=False):
     # Create indexes if they don't exist
-    if raw_input("Create indexes? Note that it is much faster AFTER data has been added. Enter y/n: ") == "y":
+    if confirm or raw_input("Create indexes? For performance reasons it should be done AFTER tables have been populated. Enter y/n: ") == "y":
         create_index('posts_idx', Post.id)
         create_index('bridge_drug_post_id_idx', Bridge_Drug_Post.id)
         create_index('bridge_drug_post_post_id_idx', Bridge_Drug_Post.post_id)
@@ -197,3 +197,9 @@ if __name__ == "__main__":
         create_index('search_terms_index', Search_Term.name)
         create_index('search_terms_index_drug_id', Search_Term.drug_id)
         create_index('search_terms_index_symptom_id', Search_Term.symptom_id)
+
+if __name__ == "__main__":
+    initialize_db()
+    create_indexes()
+
+

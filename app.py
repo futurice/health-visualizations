@@ -2,7 +2,7 @@ from __future__ import print_function # In python 2.7
 import time
 
 import sys
-from flask import Flask, jsonify
+from flask import Flask, jsonify, json
 from models import Drug, Symptom
 from sqlalchemy.orm.exc import NoResultFound
 from models import app, db, Post, Search_Term
@@ -30,8 +30,9 @@ def drugs():
 @cache.cached()
 def dosage_quotes(drug, dosage, page):
     with db_session(db) as session:
-        quotes = Post.find_dosage_quotes(session, drug, dosage, page)
-        return jsonify(quotes), 200, CONTENT_TYPE
+        posts = Post.find_dosage_quotes(session, drug, dosage, page)
+        posts = [x[0] for x in posts]
+        return jsonify(posts), 200, CONTENT_TYPE
 
 def find_search_term(session, key):
     return Search_Term.find_drug_or_symptom(session, key)
@@ -44,7 +45,7 @@ def related_quotes(key1, key2, page):
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
             posts = Post.find_related_quotes(session, res1, res2, page)
-            posts = [x for x in posts] #[str(x).decode('utf-8') for x in posts]
+            posts = [x[0] for x in posts]
             return jsonify(posts), 200, CONTENT_TYPE
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE

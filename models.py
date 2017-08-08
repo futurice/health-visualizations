@@ -75,7 +75,7 @@ class Post(db.Model):
             .offset((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
         )
-        print_query(posts)
+        #print_query(posts)
         return posts.all()
 
     @staticmethod

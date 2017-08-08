@@ -42,6 +42,7 @@ def find_search_term(session, key):
 def related_quotes(key1, key2, page):
     with db_session(db) as session:
         try:
+            print('*************** No cache hit for /related_quotes/' + key1 + "/" + key2 + "/page/" + page, file=sys.stderr)
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
             posts = Post.find_related_quotes(session, res1, res2, page)

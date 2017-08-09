@@ -47,6 +47,7 @@ def query_builder(session, Table1, Table2, condition1, condition2):
 
 def get_count(q):
     count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    print(str(count_q.compile(dialect=postgresql.dialect())), file=sys.stderr)
     count = q.session.execute(count_q).scalar()
     return count
 
@@ -56,6 +57,30 @@ class Post(db.Model):
     id = Column(Integer, primary_key=True)
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
+
+    @staticmethod
+    def find_page_count(db_session, res1, res2):
+        if Drug == type(res1):
+            Table1 = Bridge_Drug_Post
+            condition1 = Table1.drug_id == res1.id
+        else:
+            Table1 = Bridge_Symptom_Post
+            condition1 = Table1.symptom_id == res1.id
+        if Drug == type(res2):
+            Table2 = aliased(Bridge_Drug_Post)
+            condition2 = Table2.drug_id == res2.id
+        else:
+            Table2 = aliased(Bridge_Symptom_Post)
+            condition2 = Table2.symptom_id == res2.id
+        sq = query_builder(db_session, Table1, Table2, condition1, condition2)
+        all_posts_query = (
+            db_session
+                .query(Post.original)
+                .join(sq, sq.c.post_id == Post.id)
+        )
+        page_count = math.ceil(get_count(all_posts_query) / PAGE_SIZE)
+        return page_count
+
 
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):
@@ -154,6 +179,20 @@ class Bridge_Dosage_Quote(db.Model):
 
     ref_post = relationship(Post, backref="bridge_dosage_quotes")
     ref_drug = relationship(Drug, backref="bridge_dosage_quotes")
+
+class Bridge_Count_Related(db.Model):
+    __tablename__ = 'bridge_count_related'
+
+    id = Column(Integer, primary_key=True)
+    #drug1
+    #drug2
+    #symptom1
+    #symptom2
+
+
+
+    "d548s942"
+    count = Column(Integer)
 
 class Bridge_Drug_Post(db.Model):
     __tablename__ = 'bridge_drug_posts'

@@ -409,13 +409,13 @@ Example call parameters: (db_session, a.drug_representatives, a.drug_postsets, D
 For performance reasons we write to file and then use Postgres COPY to import that file.
 (Directly inserting rows into the database 1 by 1 took forever)
 '''
-def populate_postset_bridges(db, representatives, post_sets, entity_class, table_name, id_type):
+def populate_postset_bridges(db, representatives, post_sets, entity_class, bridge_class, table_name, id_type):
 
-    if len(db.query(table_name).limit(1).all()) > 0:
-        print entity_class, 'table is not empty - skipping'
+    if len(db.query(bridge_class).limit(1).all()) > 0:
+        print bridge_class, 'table is not empty - skipping'
         return
     else:
-        print '\n\nPopulating', table_name, 'table...'
+        print '\n\nPopulating', bridge_class, 'table...'
 
     progress_indicator = Progress_indicator(len(post_sets))
     csv_file_path = os.path.abspath('/tmp/temp_' + table_name + '.csv')
@@ -575,8 +575,8 @@ if __name__ == "__main__":
         a.drug_dosages = d.populate(session)
 
         # Populate postset bridges and search term tables
-        populate_postset_bridges(session, a.drug_representatives, a.drug_post_sets, Drug, 'bridge_drug_posts', 'drug_id')
-        populate_postset_bridges(session, a.symptom_representatives, a.symptom_post_sets, Symptom, 'bridge_symptom_posts', 'symptom_id')
+        populate_postset_bridges(session, a.drug_representatives, a.drug_post_sets, Drug, Bridge_Drug_Post, 'bridge_drug_posts', 'drug_id')
+        populate_postset_bridges(session, a.symptom_representatives, a.symptom_post_sets, Symptom, Bridge_Symptom_Post, 'bridge_symptom_posts', 'symptom_id')
         populate_search_terms(session)
 
         create_indexes(confirm=True)

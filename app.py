@@ -37,6 +37,18 @@ def dosage_quotes(drug, dosage, page):
 def find_search_term(session, key):
     return Search_Term.find_drug_or_symptom(session, key)
 
+@app.route("/pagecount/<key1>/<key2>")
+def page_count(key1, key2):
+    with db_session(db) as session:
+        try:
+            print('*************** No cache hit for /pagecount/' + key1 + "/" + key2, file=sys.stderr)
+            res1 = find_search_term(session, key1)
+            res2 = find_search_term(session, key2)
+            page_count = Post.find_page_count(session, res1, res2)
+            return jsonify(page_count), 200, CONTENT_TYPE
+        except NoResultFound:
+            return 'Not found', 404, CONTENT_TYPE
+
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
 @cache.cached()
 def related_quotes(key1, key2, page):

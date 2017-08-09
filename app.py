@@ -45,9 +45,10 @@ def related_quotes(key1, key2, page):
             print('*************** No cache hit for /related_quotes/' + key1 + "/" + key2 + "/page/" + page, file=sys.stderr)
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
-            posts = Post.find_related_quotes(session, res1, res2, page)
+            posts, page_count = Post.find_related_quotes(session, res1, res2, page)
             posts = [x[0] for x in posts]
-            return jsonify(posts), 200, CONTENT_TYPE
+            combined = { "page_count":page_count, "posts":posts }
+            return jsonify(combined), 200, CONTENT_TYPE
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 

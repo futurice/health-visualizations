@@ -1,7 +1,7 @@
 from __future__ import print_function
 import sqlalchemy
 import sys
-from sqlalchemy import Column, Integer, Text, Index, String, and_
+from sqlalchemy import Column, Integer, Text, Index, String, and_, func
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -10,6 +10,7 @@ from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
+import math
 
 import os
 
@@ -44,6 +45,11 @@ def query_builder(session, Table1, Table2, condition1, condition2):
         .filter(and_(condition1, condition2))\
         .subquery()
 
+def get_count(q):
+    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
+    count = q.session.execute(count_q).scalar()
+    return count
+
 class Post(db.Model):
     __tablename__ = 'posts'
 
@@ -68,15 +74,19 @@ class Post(db.Model):
             condition2 = Table2.symptom_id == res2.id
 
         sq = query_builder(db_session, Table1, Table2, condition1, condition2)
-        posts = (
+        all_posts_query = (
             db_session
             .query(Post.original)
             .join(sq, sq.c.post_id == Post.id)
+        )
+        page_count = math.ceil(get_count(all_posts_query) / PAGE_SIZE)
+        paginated_posts = (
+            all_posts_query
             .offset((page - 1) * PAGE_SIZE)
             .limit(PAGE_SIZE)
-        )
+            )
         #print_query(posts)
-        return posts.all()
+        return paginated_posts.all(), page_count
 
     @staticmethod
     def find_dosage_quotes(db_session, drug_name, dosage, page):

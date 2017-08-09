@@ -1,9 +1,9 @@
 import gevent.monkey
-# import psycogreen.gevent
+import psycogreen.gevent
 
 # Enable gevent for PSQL
 gevent.monkey.patch_all()
-# psycogreen.gevent.patch_psycopg()
+psycogreen.gevent.patch_psycopg()
 
 # ### Gunicorn settings BEGIN
 bind = [':5000']

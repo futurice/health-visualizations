@@ -1,28 +1,23 @@
 # encoding=utf-8
-import json
-import re
-import io
-import operator
-import os
-import sys
-import itertools
-import math
 import csv
-from random import shuffle
-import editdistance as edt
-import cPickle as pickle
-import dosages
-from models import initialize_db, create_indexes
+import io
+import itertools
+import json
+import os
+import re
 
+import editdistance as edt
+from sqlalchemy.exc import IntegrityError
+
+import dosages
 # For adding to DB
 from models import (
     Drug, Symptom, Post, Bridge_Drug_Post, Bridge_Symptom_Post,
     Search_Term, db
 )
+from models import initialize_db, create_indexes
+from puoback.utils.progress_indicator import Progress_indicator
 from services import db_session
-from sqlalchemy.exc import IntegrityError
-
-from progress_indicator import Progress_indicator
 
 
 def get_edit_distance(s1, s2):

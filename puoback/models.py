@@ -17,21 +17,6 @@ import os
 # Page size for sample quotes
 PAGE_SIZE = 20
 
-try:
-    # Staging and production on Heroku
-    PSQL_URL = os.environ['DATABASE_URL']
-except:
-    # Local development
-    PSQL_USERNAME = os.environ['PSQL_USERNAME']
-    PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
-    PSQL_DB = os.environ['PSQL_DB']
-    #PSQL_DB = 'do8lpb57a1pia'
-    PSQL_URL = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
-
-app = Flask('app')
-app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-db = SQLAlchemy(app)
 
 
 # For debugging, prints raw SQL query produced by SQLAlchemy

@@ -1,6 +1,5 @@
-from __future__ import print_function # In python 2.7
+from __future__ import print_function
 import time
-
 import sys
 from flask import Flask, jsonify, json
 from models import Drug, Symptom
@@ -9,6 +8,41 @@ from models import app, db, Post, Search_Term
 from services import db_session
 from flask_cors import CORS
 from flask_caching import Cache
+import sqlalchemy
+import sys
+from sqlalchemy import Column, Integer, Text, Index, String, and_, func
+from sqlalchemy.dialects import postgresql
+from sqlalchemy.dialects.postgresql import JSON, JSONB
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker, aliased, query
+from sqlalchemy import Table, Column, Integer, ForeignKey
+from sqlalchemy.orm import relationship
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+import math
+import os
+
+try:
+    # Staging and production on Heroku
+    PSQL_URL = os.environ['DATABASE_URL']
+except:
+    # Local development
+    PSQL_USERNAME = os.environ['PSQL_USERNAME']
+    PSQL_PASSWORD = os.environ['PSQL_PASSWORD']
+    PSQL_DB = os.environ['PSQL_DB']
+    # PSQL_DB = 'do8lpb57a1pia'
+    PSQL_URL = 'postgresql://' + PSQL_USERNAME + ':' + PSQL_PASSWORD + '@localhost:5432/' + PSQL_DB
+
+def create_app():
+    app = Flask('app')
+    app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    db = SQLAlchemy(app)
+
+
+
+
+
 
 CORS(app)
 cache = Cache(app,config={'CACHE_TYPE': 'simple'})

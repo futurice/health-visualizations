@@ -1,15 +1,12 @@
 import csv
-import json
-import io
 import os
-import editdistance as ed
 import re
-import time
-import associations
-import random
-from models import Post, Drug, Bridge_Dosage_Quote
-from progress_indicator import Progress_indicator
+
 from sqlalchemy.orm.attributes import flag_modified
+
+from models import Post, Drug, Bridge_Dosage_Quote
+from puoback import associations
+from puoback.utils.progress_indicator import Progress_indicator
 
 
 def is_drug(word, drug_parents, drug_grandparents):

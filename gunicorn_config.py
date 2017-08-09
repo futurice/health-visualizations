@@ -6,7 +6,7 @@ gevent.monkey.patch_all()
 psycogreen.gevent.patch_psycopg()
 
 # ### Gunicorn settings BEGIN
-bind = [':5000']
+#bind = [':5000']
 loglevel = 'warning'
 worker_class = 'gevent'
 # ### Gunicorn settings END

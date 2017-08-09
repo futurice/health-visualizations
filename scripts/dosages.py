@@ -4,8 +4,7 @@ import re
 
 from sqlalchemy.orm.attributes import flag_modified
 
-from models import Post, Drug, Bridge_Dosage_Quote
-from puoback import associations
+from puoback.models import Post, Drug, Bridge_Dosage_Quote
 from puoback.utils.progress_indicator import Progress_indicator
 
 
@@ -47,18 +46,18 @@ def preprocess_post(post):
         else:
             # Not a dosage (or possibly "400" of "400 mg"; in that case this addition will be removed in next iteration)
             ret_post.append(word)
-            
+
     return ret_post
 
 def closest_drug(post, ind, drug_parents, drug_grandparents):
     search_radius = 1
     while ind - search_radius >= 0 or ind + search_radius < len(post):
-        
+
         if ind - search_radius >= 0:
             real_drug = is_drug(post[ind - search_radius], drug_parents, drug_grandparents)
             if real_drug:
                 return real_drug
-        
+
         if ind + search_radius < len(post):
             real_drug = is_drug(post[ind + search_radius], drug_parents, drug_grandparents)
             if real_drug:
@@ -76,6 +75,7 @@ class Dosages:
     # Calculates the amount of times a dose has been mentioned for each drug,
     # populates bridge_dosage_quotes and updates drugs' data field
     def populate(self, db):
+        from . import associations
 
         if len(db.query(Bridge_Dosage_Quote).limit(1).all()) > 0:
             print 'Bridge_Dosage_Quotes table is not empty - skipping'
@@ -146,4 +146,3 @@ class Dosages:
 
 if __name__ == "__main__":
     pass
-

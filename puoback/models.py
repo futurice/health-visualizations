@@ -1,6 +1,9 @@
 from __future__ import print_function
-import sqlalchemy
+
+import math
 import sys
+
+import sqlalchemy as sa
 from sqlalchemy import Column, Integer, Text, Index, String, and_, func
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
@@ -8,20 +11,17 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker, aliased, query
 from sqlalchemy import Table, Column, Integer, ForeignKey
 from sqlalchemy.orm import relationship
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
-import math
 
-import os
+from puoback import db
 
 # Page size for sample quotes
 PAGE_SIZE = 20
 
 
-
 # For debugging, prints raw SQL query produced by SQLAlchemy
 def print_query(q):
     print(str(q.statement.compile(dialect=postgresql.dialect())), file=sys.stderr)
+
 
 # Helper method for Post.find_related_quotes()
 def query_builder(session, Table1, Table2, condition1, condition2):
@@ -39,6 +39,7 @@ def get_count(q):
 class Post(db.Model):
     __tablename__ = 'posts'
 
+    # Change all primary IDs to BigInteger
     id = Column(Integer, primary_key=True)
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
@@ -165,19 +166,18 @@ class Bridge_Dosage_Quote(db.Model):
     ref_post = relationship(Post, backref="bridge_dosage_quotes")
     ref_drug = relationship(Drug, backref="bridge_dosage_quotes")
 
-class Bridge_Count_Related(db.Model):
-    __tablename__ = 'bridge_count_related'
+# class Bridge_Count_Related(db.Model):
+#     __tablename__ = 'bridge_count_related'
 
-    id = Column(Integer, primary_key=True)
-    #drug1
-    #drug2
-    #symptom1
-    #symptom2
+#     id = Column(Integer, primary_key=True)
+#     #drug1
+#     #drug2
+#     #symptom1
+#     #symptom2
 
+#     "d548s942"
+#     count = Column(Integer)
 
-
-    "d548s942"
-    count = Column(Integer)
 
 class Bridge_Drug_Post(db.Model):
     __tablename__ = 'bridge_drug_posts'
@@ -210,11 +210,6 @@ def create_index(index_name, table_field):
         print('Skipping ', index_name)
         pass
 
-def initialize_db():
-    if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
-        db.drop_all()
-    # Create / update schema
-    db.create_all()
 
 def create_indexes(confirm=False):
     # Create indexes if they don't exist
@@ -230,8 +225,13 @@ def create_indexes(confirm=False):
         create_index('search_terms_index_drug_id', Search_Term.drug_id)
         create_index('search_terms_index_symptom_id', Search_Term.symptom_id)
 
+def initialize_db():
+    if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
+        db.drop_all()
+    # Create / update schema
+    db.create_all()
+
+
 if __name__ == "__main__":
     initialize_db()
     create_indexes()
-
-

@@ -10,6 +10,7 @@ gunicorn
 gevent
 greenlet
 psycogreen
+Werkzeug
 
 # Debugging
 ipython

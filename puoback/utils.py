@@ -1,5 +1,6 @@
 import time
 
+
 class Progress_indicator:
     def __init__(self, max):
         self.curr = 0

@@ -1,4 +1,9 @@
 import logging
+from os import environ as env
+
+from werkzeug.serving import run_simple
+
+from puoback import create_app
 
 # Add root logger
 logger = logging.getLogger()
@@ -10,16 +15,11 @@ stream_hdlr.setFormatter(
     )
 )
 logger.addHandler(stream_hdlr)
-logger.setLevel(logging.DEBUG if config.get('TESTING') else logging.WARN)
+logger.setLevel(logging.DEBUG if env.get('TESTING') else logging.WARN)
 
 app = create_app()
 
 if __name__ == '__main__':
-    from wsgiref import simple_server
-
-    httpd = simple_server.WSGIServer(
-        ('', 5000),
-        simple_server.WSGIRequestHandler
+    run_simple.WSGIServer(
+        '0.0.0.0', 5000, app, use_reloader=True, use_debugger=True
     )
-    httpd.set_app(app)
-    httpd.serve_forever()

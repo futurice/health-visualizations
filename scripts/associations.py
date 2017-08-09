@@ -9,15 +9,16 @@ import re
 import editdistance as edt
 from sqlalchemy.exc import IntegrityError
 
-import dosages
+from . import dosages
+
 # For adding to DB
-from models import (
+from puoback import db
+from puoback.models import (
     Drug, Symptom, Post, Bridge_Drug_Post, Bridge_Symptom_Post,
-    Search_Term, db
+    Search_Term, initialize_db, create_indexes
 )
-from models import initialize_db, create_indexes
-from puoback.utils.progress_indicator import Progress_indicator
-from services import db_session
+from puoback.services import db_session
+from puoback.utils import Progress_indicator
 
 
 def get_edit_distance(s1, s2):

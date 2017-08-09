@@ -80,7 +80,7 @@ class Dosages:
     # populates bridge_dosage_quotes and updates drugs' data field
     def populate(self, db):
 
-        if len(db.query(Bridge_Dosage_Quote).all()) > 0:
+        if len(db.query(Bridge_Dosage_Quote).limit(1).all()) > 0:
             print 'Bridge_Dosage_Quotes table is not empty - skipping'
             return
         else:

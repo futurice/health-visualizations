@@ -411,11 +411,11 @@ For performance reasons we write to file and then use Postgres COPY to import th
 '''
 def populate_postset_bridges(db, representatives, post_sets, entity_class, table_name, id_type):
 
-    if len(db.query(entity_class).all()) > 0:
+    if len(db.query(table_name).limit(1).all()) > 0:
         print entity_class, 'table is not empty - skipping'
         return
     else:
-        print '\n\nPopulating', entity_class, 'table...'
+        print '\n\nPopulating', table_name, 'table...'
 
     progress_indicator = Progress_indicator(len(post_sets))
     csv_file_path = os.path.abspath('/tmp/temp_' + table_name + '.csv')
@@ -432,7 +432,7 @@ def populate_postset_bridges(db, representatives, post_sets, entity_class, table
     db.execute("COPY " + table_name + " FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
     db.commit()
 
-def write_search_terms_to_csv(csv_writer, entity_class, next_free_id):
+def write_search_terms_to_csv(db, csv_writer, entity_class, next_free_id):
     entities = db.query(entity_class).all()
     progress_indicator = Progress_indicator(len(entities))
     for entity in entities:
@@ -452,21 +452,26 @@ def write_search_terms_to_csv(csv_writer, entity_class, next_free_id):
     return next_free_id
 
 def populate_search_terms(db):
-    print 'Inserting search terms to db...'
+    if len(db.query(Search_Term).limit(1).all()) > 0:
+        print 'Search_Terms table is not empty - skipping'
+        return
+    else:
+        print '\n\nPopulating Search_Terms table...'
+
     csv_file_path = os.path.abspath('/tmp/temp_search_terms.csv')
     with open(csv_file_path, 'wb') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
         csv_writer.writerow(['id', 'name', 'drug_id', 'symptom_id'])
         next_free_id = 1
-        next_free_id = write_search_terms_to_csv(csv_writer, Drug, next_free_id)
-        next_free_id = write_search_terms_to_csv(csv_writer, Symptom, next_free_id)
+        next_free_id = write_search_terms_to_csv(db, csv_writer, Drug, next_free_id)
+        next_free_id = write_search_terms_to_csv(db, csv_writer, Symptom, next_free_id)
     db.execute("COPY search_terms FROM '" + csv_file_path + "' DELIMITER '~' NULL as 'None' CSV HEADER;")
     db.commit()
 
 """ Create associations JSON for database for resource e.g "drugs" """
 def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, representatives, post_counts):
 
-    if len(db.query(entity_class).all()) > 0:
+    if len(db.query(entity_class).limit(1).all()) > 0:
         print entity_class, 'table is not empty - skipping'
         return
     else:
@@ -515,7 +520,7 @@ def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, represen
 
 
 def populate_posts(db, data_json_path):
-    if len(db.query(Post).all()) > 0:
+    if len(db.query(Post).limit(1).all()) > 0:
         print 'Posts table is not empty - skipping'
         return
     else:

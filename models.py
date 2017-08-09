@@ -179,8 +179,6 @@ def create_index(index_name, table_field):
 def initialize_db():
     if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
         db.drop_all()
-    else:
-        print("Ok, we can try to add new tables and indexes, but existing tables won't be otherwise modified.")
     # Create / update schema
     db.create_all()
 

@@ -118,7 +118,7 @@ class Post(db.Model):
         )
         post_ids = [bridge.post_id for bridge in bridges]
         post_originals = db_session.query(Post.original).filter(Post.id.in_(post_ids))
-        return [x for x in post_originals]  # query to list
+        return [x for x in post_originals], page_count
 
 class Drug(db.Model):
     __tablename__ = 'drugs'

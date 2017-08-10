@@ -67,9 +67,40 @@ class Post(db.Model):
         page_count = math.ceil(get_count(all_posts_query) / PAGE_SIZE)
         return page_count
 
-
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):
+        page = int(page)
+        if Drug == type(res1):
+            Table1 = Bridge_Drug_Post
+            condition1 = Table1.drug_id == res1.id
+        else:
+            Table1 = Bridge_Symptom_Post
+            condition1 = Table1.symptom_id == res1.id
+        if Drug == type(res2):
+            Table2 = aliased(Bridge_Drug_Post)
+            condition2 = Table2.drug_id == res2.id
+        else:
+            Table2 = aliased(Bridge_Symptom_Post)
+            condition2 = Table2.symptom_id == res2.id
+
+        sq = query_builder(db_session, Table1, Table2, condition1, condition2)
+        all_posts_query = (
+            db_session
+                .query(Post.original)
+                .join(sq, sq.c.post_id == Post.id)
+        )
+        #page_count = math.ceil(get_count(all_posts_query) / PAGE_SIZE)
+        paginated_posts = (
+            all_posts_query
+                .offset((page - 1) * PAGE_SIZE)
+                .limit(PAGE_SIZE)
+        )
+        # print_query(posts)
+        return paginated_posts.all()#, page_count
+
+
+    @staticmethod
+    def find_related_quotes_REAL(db_session, res1, res2, page):
         page = int(page)
         if Drug == type(res1):
             Table1 = Bridge_Drug_Post

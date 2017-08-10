@@ -9,7 +9,7 @@ import re
 import editdistance as edt
 from sqlalchemy.exc import IntegrityError
 
-from . import dosages
+import dosages
 
 # For adding to DB
 from puoback import db

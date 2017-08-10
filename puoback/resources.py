@@ -11,7 +11,6 @@ from puoback.models import Post, Search_Term, Drug, Symptom
 
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
-
 @app.route("/test")
 def route_test():
     return str(__name__), 200, CONTENT_TYPE

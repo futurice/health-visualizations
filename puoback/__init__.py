@@ -5,6 +5,7 @@ import os
 from flask import Flask
 # from flask_cors import CORS
 from flask_cache import Cache
+from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 
 try:
@@ -23,7 +24,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy()
 cache = Cache(config={'CACHE_TYPE': 'simple'})
-# CORS(app)
+CORS(app)
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
 

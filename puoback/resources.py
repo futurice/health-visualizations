@@ -30,8 +30,9 @@ def dosage_quotes(drug, dosage, page):
     with db_session(db) as session:
         posts = Post.find_dosage_quotes(session, drug, dosage, page)
         posts = [x[0] for x in posts]
-        return jsonify(posts), 200, CONTENT_TYPE
-
+        page_count = 7
+        combined = {"page_count": page_count, "posts": posts}
+        return jsonify(combined), 200, CONTENT_TYPE
 
 def find_search_term(session, key):
     return Search_Term.find_drug_or_symptom(session, key)

@@ -7,10 +7,12 @@ import os
 import re
 
 import editdistance as edt
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
+from puoback.__init__ import create_app
 
-import dosages
-
+import scripts.dosages
 # For adding to DB
 from puoback import db
 from puoback.models import (
@@ -93,12 +95,13 @@ def collect_grandparents(parents, words):
         grandparents.add(parents[stem])
     return grandparents
 
-def map_abbreviations(grandparents, parents, vocab):
+def map_abbreviations(stems, parents, vocab):
     for word in vocab:
-        for stem in grandparents:
+        for stem in stems:
             if word.startswith(stem):
                 parents[word] = parents[stem]
                 #out("Mapping", word, parents[word])
+
 
 def find_candidates(post_counts, grandparents, parents, db):
     representative_candidates = {}
@@ -216,6 +219,8 @@ class Word_Matcher():
 def get_baskets(db, parents, grandparents):
     baskets = dict()
 
+    temp_helper = set()
+
     for keyword in grandparents:
         baskets[keyword] = set()
 
@@ -254,9 +259,6 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
         for i in range(len(matcher.lemmatized)):
             lemm_word = matcher.lemmatized[i]
             orig_word = matcher.original[i]
-
-            if orig_word.startswith('ibupro'):
-                print 'Original word', orig_word, 'lemmatized', lemm_word, 'parent', parents[lemm_word]
 
             # Find grandparent of lemm_word.
             parent = parents[lemm_word]
@@ -311,10 +313,10 @@ class Associations:
         self.drugs_file = drugs_file
 
     def update_all_parents_and_grandparents(self):
-        update_parenthood(self.drug_parents, self.drug_words)
-        update_parenthood(self.symptom_parents, self.symptom_words)
-        self.drug_grandparents = collect_grandparents(self.drug_parents, self.drug_words)
-        self.symptom_grandparents = collect_grandparents(self.symptom_parents, self.symptom_words)
+        update_parenthood(self.drug_parents, self.drug_stems)
+        update_parenthood(self.symptom_parents, self.symptom_stems)
+        self.drug_grandparents = collect_grandparents(self.drug_parents, self.drug_stems)
+        self.symptom_grandparents = collect_grandparents(self.symptom_parents, self.symptom_stems)
 
     def train(self, db):
         print 'Producing associations object...'
@@ -327,20 +329,20 @@ class Associations:
 
         print 'Part 0 done: vocabulary size', len(self.vocab)
 
-        self.drug_words = read_special_words(self.drugs_file)
-        self.symptom_words = read_special_words(self.symptoms_file)
+        self.drug_stems = read_special_words(self.drugs_file)
+        self.symptom_stems = read_special_words(self.symptoms_file)
 
         # Initialization
         self.drug_parents = {}
         self.symptom_parents = {}
-        for word in itertools.chain(*[self.vocab, self.drug_words, self.symptom_words]):
+        for word in itertools.chain(*[self.vocab, self.drug_stems, self.symptom_stems]):
             # Note that drugs and symptoms may contain stemmed words which don't appear in the corpus
             self.drug_parents[word] = word
             self.symptom_parents[word] = word
 
         # Merge similar drug words into each other, same with symptom words separately
-        merge_similar(self.drug_parents, self.drug_words)
-        merge_similar(self.symptom_parents, self.symptom_words)
+        merge_similar(self.drug_parents, self.drug_stems)
+        merge_similar(self.symptom_parents, self.symptom_stems)
 
         # Update parents and grandparents before merging ambiguous lemmatizations
         self.update_all_parents_and_grandparents()
@@ -354,15 +356,15 @@ class Associations:
 
         print 'Part 1 done: merged similar special words'
 
-        self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
-        self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
-
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
-        map_abbreviations(self.drug_grandparents, self.drug_parents, self.vocab)
+        map_abbreviations(self.drug_stems, self.drug_parents, self.vocab)
 
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
-        #map_abbreviations(self.symptom_grandparents, self.symptom_grandparents)
+
+        self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
+        self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
+
         print 'Part 2 done: merged full vocabulary'
 
         self.drug_post_counts = {}
@@ -547,9 +549,10 @@ def populate_posts(db, data_json_path):
 
 
 if __name__ == "__main__":
+    create_app().app_context().push()
     with db_session(db) as session:
-        processed_data_folder = os.path.join('..', 'how-to-get-healthy', 'processed_data')
-        word_lists_folder = os.path.join('..', 'how-to-get-healthy', 'word_lists')
+        processed_data_folder = os.path.join('..', '..', 'how-to-get-healthy', 'processed_data')
+        word_lists_folder = os.path.join('..', '..', 'how-to-get-healthy', 'word_lists')
         data_json_path = os.path.join(processed_data_folder, 'data.json')
         drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
         symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')

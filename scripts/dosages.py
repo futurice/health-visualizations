@@ -75,7 +75,7 @@ class Dosages:
     # Calculates the amount of times a dose has been mentioned for each drug,
     # populates bridge_dosage_quotes and updates drugs' data field
     def populate(self, db):
-        from . import associations
+        from scripts import associations
 
         if len(db.query(Bridge_Dosage_Quote).limit(1).all()) > 0:
             print 'Bridge_Dosage_Quotes table is not empty - skipping'

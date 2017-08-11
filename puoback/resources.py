@@ -49,6 +49,14 @@ def page_count(key1, key2):
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+@app.route("/baskets/<key>")
+def basket(key):
+    with db_session(db) as session:
+        try:
+            res = find_search_term(session, key)
+            return jsonify(res.data["basket"]), 200, CONTENT_TYPE
+        except:
+            return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
 @cache.cached()

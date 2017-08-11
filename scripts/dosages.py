@@ -5,7 +5,7 @@ import re
 from sqlalchemy.orm.attributes import flag_modified
 
 from puoback.models import Post, Drug, Bridge_Dosage_Quote
-from puoback.utils.progress_indicator import Progress_indicator
+from puoback.utils import Progress_indicator
 
 
 def is_drug(word, drug_parents, drug_grandparents):

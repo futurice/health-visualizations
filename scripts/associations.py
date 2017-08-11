@@ -255,6 +255,9 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
             lemm_word = matcher.lemmatized[i]
             orig_word = matcher.original[i]
 
+            if orig_word.startswith('ibupro'):
+                print 'Original word', orig_word, 'lemmatized', lemm_word, 'parent', parents[lemm_word]
+
             # Find grandparent of lemm_word.
             parent = parents[lemm_word]
             while parent != parents[lemm_word]:
@@ -567,7 +570,7 @@ if __name__ == "__main__":
         populate_drugs_or_symptoms(session, Drug, a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_post_counts)
 
         # Calculate dosages; populate bridge_dosage_quotes and update drugs.data to include dosages
-        d = dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)
+        d = scripts.dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)
         a.drug_dosages = d.populate(session)
 
         # Populate postset bridges and search term tables

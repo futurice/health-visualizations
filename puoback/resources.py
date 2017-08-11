@@ -41,7 +41,6 @@ def find_search_term(session, key):
 def page_count(key1, key2):
     with db_session(db) as session:
         try:
-            print('*************** No cache hit for /pagecount/' + key1 + "/" + key2, file=sys.stderr)
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
             page_count = Post.find_page_count(session, res1, res2)
@@ -58,12 +57,15 @@ def basket(key):
         except:
             return 'Not found', 404, CONTENT_TYPE
 
+@app.route("/temp/<key>")
+def tempthing(key):
+    return key, 200, CONTENT_TYPE
+
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
 @cache.cached()
 def related_quotes(key1, key2, page):
     with db_session(db) as session:
         try:
-            print('*************** No cache hit for /related_quotes/' + key1 + "/" + key2 + "/page/" + page, file=sys.stderr)
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
             posts, page_count = Post.find_related_quotes(session, res1, res2, page)

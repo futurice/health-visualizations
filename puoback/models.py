@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import math
 import sys
+import os
 
 import sqlalchemy as sa
 from sqlalchemy import Column, Integer, Text, Index, String, and_, func
@@ -89,7 +90,7 @@ class Post(db.Model):
             .query(Post.original)
             .join(sq, sq.c.post_id == Post.id)
         )
-        page_count = int(math.ceil(get_count(all_posts_query) / PAGE_SIZE))
+        page_count = int(math.ceil(1.0 * get_count(all_posts_query) / PAGE_SIZE))
         paginated_posts = (
             all_posts_query
             .offset((page - 1) * PAGE_SIZE)
@@ -108,7 +109,7 @@ class Post(db.Model):
             .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
                          Bridge_Dosage_Quote.dosage_mg == dosage))
         )
-        page_count = int(math.ceil(get_count(bridge_q) / PAGE_SIZE))
+        page_count = int(math.ceil(1.0 * get_count(bridge_q) / PAGE_SIZE))
 
         bridges = (
             bridge_q
@@ -229,12 +230,8 @@ def create_indexes(confirm=False):
         create_index('search_terms_index_symptom_id', Search_Term.symptom_id)
 
 def initialize_db():
+    PSQL_DB = os.environ['PSQL_DB']
     if raw_input("Drop previous database schema and all data from " + PSQL_DB + "? Enter y/n: ") == "y":
         db.drop_all()
     # Create / update schema
     db.create_all()
-
-
-if __name__ == "__main__":
-    initialize_db()
-    create_indexes()

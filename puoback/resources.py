@@ -57,12 +57,7 @@ def basket(key):
         except:
             return 'Not found', 404, CONTENT_TYPE
 
-@app.route("/temp/<key>")
-def tempthing(key):
-    return key, 200, CONTENT_TYPE
-
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
-@cache.cached()
 def related_quotes(key1, key2, page):
     with db_session(db) as session:
         try:

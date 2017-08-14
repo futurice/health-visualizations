@@ -57,6 +57,18 @@ def basket(key):
         except:
             return 'Not found', 404, CONTENT_TYPE
 
+@app.route("/keyword_quotes/<key>/page/<page>")
+def keyword_quotes(key, page):
+    with db_session(db) as session:
+        try:
+            res = find_search_term(session, key)
+            posts, page_count = Post.find_keyword_quotes(session, res, page)
+            posts = [x[0] for x in posts]
+            combined = { "page_count":page_count, "posts":posts }
+            return jsonify(combined), 200, CONTENT_TYPE
+        except NoResultFound:
+            return 'Not found', 404, CONTENT_TYPE
+
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
 def related_quotes(key1, key2, page):
     with db_session(db) as session:

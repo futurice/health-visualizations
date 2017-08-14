@@ -527,10 +527,9 @@ def populate_posts(db, data_json_path):
     else:
         print '\n\nPopulating posts table...'
 
-    print 'Loading', data_json_path
+    print 'Loading file into memory: ', data_json_path
     with open(data_json_path) as file:
         data = json.load(file)
-    print 'Done.'
     progress_indicator = Progress_indicator(len(data))
     csv_file_path = os.path.abspath('/tmp/temp.csv')
     with open(csv_file_path, 'wb') as csvfile:

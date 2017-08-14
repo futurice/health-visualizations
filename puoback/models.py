@@ -31,19 +31,30 @@ def query_builder(session, Table1, Table2, condition1, condition2):
         .filter(and_(condition1, condition2))\
         .subquery()
 
-def get_count(q):
-    count_q = q.statement.with_only_columns([func.count()]).order_by(None)
-    print(str(count_q.compile(dialect=postgresql.dialect())), file=sys.stderr)
-    count = q.session.execute(count_q).scalar()
-    return count
-
 class Post(db.Model):
     __tablename__ = 'posts'
 
-    # Change all primary IDs to BigInteger
+    # TODO Change all primary IDs to BigInteger
     id = Column(Integer, primary_key=True)
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
+
+    @staticmethod
+    def get_page_count(query):
+        count_q = query.statement.with_only_columns([func.count()]).order_by(None)
+        # print(str(count_q.compile(dialect=postgresql.dialect())), file=sys.stderr)
+        total_count = query.session.execute(count_q).scalar()
+        page_count = int(math.ceil(1.0 * total_count / PAGE_SIZE))
+        return page_count
+
+    @staticmethod
+    def get_page_posts(query, page):
+        return (
+            query
+                .offset((page - 1) * PAGE_SIZE)
+                .limit(PAGE_SIZE)
+                .all()
+        )
 
     @staticmethod
     def find_page_count(db_session, res1, res2):
@@ -65,8 +76,25 @@ class Post(db.Model):
                 .query(Post.original)
                 .join(sq, sq.c.post_id == Post.id)
         )
-        page_count = math.ceil(get_count(all_posts_query) / PAGE_SIZE)
-        return page_count
+        return Post.get_page_count(all_posts_query)
+
+    @staticmethod
+    def find_keyword_quotes(db_session, res, page):
+        page = int(page)
+        if Drug == type(res):
+            Table = Bridge_Drug_Post
+            condition = Table.drug_id == res.id
+        else:
+            Table = Bridge_Symptom_Post
+            condition = Table.symptom_id == res.id
+
+        all_posts_query = (
+            db_session
+            .query(Post.original)
+            .join(Table, Table.post_id == Post.id)
+            .filter(condition)
+        )
+        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
 
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):
@@ -90,14 +118,8 @@ class Post(db.Model):
             .query(Post.original)
             .join(sq, sq.c.post_id == Post.id)
         )
-        page_count = int(math.ceil(1.0 * get_count(all_posts_query) / PAGE_SIZE))
-        paginated_posts = (
-            all_posts_query
-            .offset((page - 1) * PAGE_SIZE)
-            .limit(PAGE_SIZE)
-            )
         #print_query(posts)
-        return paginated_posts.all(), page_count
+        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
 
     @staticmethod
     def find_dosage_quotes(db_session, drug_name, dosage, page):
@@ -105,21 +127,12 @@ class Post(db.Model):
         drug = Drug.find_drug(db_session, drug_name)
         bridge_q = (
             db_session
-            .query(Bridge_Dosage_Quote)
+            .query(Post.original)
+            .join(Bridge_Dosage_Quote, Post.id == Bridge_Dosage_Quote.post_id)
             .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
                          Bridge_Dosage_Quote.dosage_mg == dosage))
         )
-        page_count = int(math.ceil(1.0 * get_count(bridge_q) / PAGE_SIZE))
-
-        bridges = (
-            bridge_q
-                .offset((page - 1) * PAGE_SIZE)
-                .limit(PAGE_SIZE)
-                .all()
-        )
-        post_ids = [bridge.post_id for bridge in bridges]
-        post_originals = db_session.query(Post.original).filter(Post.id.in_(post_ids))
-        return [x for x in post_originals], page_count
+        return Post.get_page_posts(bridge_q, page), Post.get_page_count(bridge_q)
 
 class Drug(db.Model):
     __tablename__ = 'drugs'

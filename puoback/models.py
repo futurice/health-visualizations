@@ -5,7 +5,7 @@ import sys
 import os
 
 import sqlalchemy as sa
-from sqlalchemy import Column, Integer, Text, Index, String, and_, func
+from sqlalchemy import Column, Integer, Text, Index, String, and_, func, BigInteger
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.dialects.postgresql import JSON, JSONB
 from sqlalchemy.ext.declarative import declarative_base
@@ -34,8 +34,8 @@ def query_builder(session, Table1, Table2, condition1, condition2):
 class Post(db.Model):
     __tablename__ = 'posts'
 
-    # TODO Change all primary IDs to BigInteger
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
+    url = Column(Text, unique=False)
     original = Column(Text, unique=False)
     lemmatized = Column(Text, unique=False)
 
@@ -73,7 +73,7 @@ class Post(db.Model):
         sq = query_builder(db_session, Table1, Table2, condition1, condition2)
         all_posts_query = (
             db_session
-                .query(Post.original)
+                .query(Post.url, Post.original)
                 .join(sq, sq.c.post_id == Post.id)
         )
         return Post.get_page_count(all_posts_query)
@@ -90,7 +90,7 @@ class Post(db.Model):
 
         all_posts_query = (
             db_session
-            .query(Post.original)
+            .query(Post.url, Post.original)
             .join(Table, Table.post_id == Post.id)
             .filter(condition)
         )
@@ -115,7 +115,7 @@ class Post(db.Model):
         sq = query_builder(db_session, Table1, Table2, condition1, condition2)
         all_posts_query = (
             db_session
-            .query(Post.original)
+            .query(Post.url, Post.original)
             .join(sq, sq.c.post_id == Post.id)
         )
         #print_query(posts)
@@ -127,7 +127,7 @@ class Post(db.Model):
         drug = Drug.find_drug(db_session, drug_name)
         bridge_q = (
             db_session
-            .query(Post.original)
+            .query(Post.url, Post.original)
             .join(Bridge_Dosage_Quote, Post.id == Bridge_Dosage_Quote.post_id)
             .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
                          Bridge_Dosage_Quote.dosage_mg == dosage))
@@ -136,7 +136,7 @@ class Post(db.Model):
 
 class Drug(db.Model):
     __tablename__ = 'drugs'
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
 
@@ -146,7 +146,7 @@ class Drug(db.Model):
 
 class Symptom(db.Model):
     __tablename__ = 'symptoms'
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     name = Column(Text, unique=True)
     data = Column(JSONB)
 
@@ -156,10 +156,10 @@ class Symptom(db.Model):
 
 class Search_Term(db.Model):
     __tablename__ = 'search_terms'
-    id = Column(Integer, primary_key=True)
+    id = Column(BigInteger, primary_key=True)
     name = Column(String(64), nullable=False, unique=True)
-    drug_id = Column(Integer, ForeignKey('drugs.id'), nullable=True)
-    symptom_id = Column(Integer, ForeignKey('symptoms.id'), nullable=True)
+    drug_id = Column(BigInteger, ForeignKey('drugs.id'), nullable=True)
+    symptom_id = Column(BigInteger, ForeignKey('symptoms.id'), nullable=True)
 
     ref_drug = relationship(Drug, backref="search_terms")
     ref_symptom = relationship(Symptom, backref="search_terms")
@@ -175,33 +175,20 @@ class Search_Term(db.Model):
 class Bridge_Dosage_Quote(db.Model):
     __tablename__ = 'bridge_dosage_quotes'
 
-    id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey('posts.id'))
-    drug_id = Column(Integer, ForeignKey('drugs.id'))
-    dosage_mg = Column(Integer)
+    id = Column(BigInteger, primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('posts.id'))
+    drug_id = Column(BigInteger, ForeignKey('drugs.id'))
+    dosage_mg = Column(BigInteger)
 
     ref_post = relationship(Post, backref="bridge_dosage_quotes")
     ref_drug = relationship(Drug, backref="bridge_dosage_quotes")
 
-# class Bridge_Count_Related(db.Model):
-#     __tablename__ = 'bridge_count_related'
-
-#     id = Column(Integer, primary_key=True)
-#     #drug1
-#     #drug2
-#     #symptom1
-#     #symptom2
-
-#     "d548s942"
-#     count = Column(Integer)
-
-
 class Bridge_Drug_Post(db.Model):
     __tablename__ = 'bridge_drug_posts'
 
-    id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey('posts.id'))
-    drug_id = Column(Integer, ForeignKey('drugs.id'))
+    id = Column(BigInteger, primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('posts.id'))
+    drug_id = Column(BigInteger, ForeignKey('drugs.id'))
 
     ref_post = relationship(Post, backref="bridge_drug_posts")
     ref_drug = relationship(Drug, backref="bridge_drug_posts")
@@ -210,9 +197,9 @@ class Bridge_Drug_Post(db.Model):
 class Bridge_Symptom_Post(db.Model):
     __tablename__ = 'bridge_symptom_posts'
 
-    id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey('posts.id'))
-    symptom_id = Column(Integer, ForeignKey('symptoms.id'))
+    id = Column(BigInteger, primary_key=True)
+    post_id = Column(BigInteger, ForeignKey('posts.id'))
+    symptom_id = Column(BigInteger, ForeignKey('symptoms.id'))
 
     ref_post = relationship(Post, backref="bridge_symptom_posts")
     ref_symptom = relationship(Symptom, backref="bridge_symptom_posts")

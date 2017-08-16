@@ -534,14 +534,19 @@ def populate_posts(db, data_json_path):
     csv_file_path = os.path.abspath('/tmp/temp.csv')
     with open(csv_file_path, 'wb') as csvfile:
         csv_writer = csv.writer(csvfile, delimiter='~', lineterminator='\n')
-        csv_writer.writerow(['id', 'original_post', 'lemmatized_post'])
+        csv_writer.writerow(['id', 'url', 'original_post', 'lemmatized_post'])
         next_free_id = 1
         for thread in data:
             progress_indicator.tick()
             for post in thread:
-                original_post = post.split('~')[0]
-                lemmatized_post = post.split('~')[1]
-                csv_writer.writerow([next_free_id, original_post.encode("utf-8"), lemmatized_post.encode("utf-8")])
+                splitted = post.split('~')
+                if len(splitted) != 3:
+                    print 'Problem with delimiter ~ with post ', post
+                    raise
+                url = splitted[0]
+                original_post = splitted[1]
+                lemmatized_post = splitted[2]
+                csv_writer.writerow([next_free_id, url.encode("utf-8"), original_post.encode("utf-8"), lemmatized_post.encode("utf-8")])
                 next_free_id += 1
     db.execute("COPY posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
     db.commit()

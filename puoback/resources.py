@@ -29,7 +29,7 @@ def drugs():
 def dosage_quotes(drug, dosage, page):
     with db_session(db) as session:
         posts, page_count = Post.find_dosage_quotes(session, drug, dosage, page)
-        posts = [x[0] for x in posts]
+        posts = [x for x in posts]
         combined = {"page_count": page_count, "posts": posts}
         return jsonify(combined), 200, CONTENT_TYPE
 
@@ -63,7 +63,7 @@ def keyword_quotes(key, page):
         try:
             res = find_search_term(session, key)
             posts, page_count = Post.find_keyword_quotes(session, res, page)
-            posts = [x[0] for x in posts]
+            posts = [x for x in posts]
             combined = { "page_count":page_count, "posts":posts }
             return jsonify(combined), 200, CONTENT_TYPE
         except NoResultFound:
@@ -76,7 +76,7 @@ def related_quotes(key1, key2, page):
             res1 = find_search_term(session, key1)
             res2 = find_search_term(session, key2)
             posts, page_count = Post.find_related_quotes(session, res1, res2, page)
-            posts = [x[0] for x in posts]
+            posts = [x for x in posts]
             combined = { "page_count":page_count, "posts":posts }
             return jsonify(combined), 200, CONTENT_TYPE
         except NoResultFound:

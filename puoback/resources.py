@@ -12,6 +12,7 @@ from puoback.models import Post, Search_Term, Drug, Symptom
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 
 @app.route("/test")
+@cache.cached()
 def route_test():
     return str(__name__), 200, CONTENT_TYPE
 
@@ -38,6 +39,7 @@ def find_search_term(session, key):
 
 
 @app.route("/pagecount/<key1>/<key2>")
+@cache.cached()
 def page_count(key1, key2):
     with db_session(db) as session:
         try:
@@ -49,6 +51,7 @@ def page_count(key1, key2):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/baskets/<key>")
+@cache.cached()
 def basket(key):
     with db_session(db) as session:
         try:
@@ -58,6 +61,7 @@ def basket(key):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/keyword_quotes/<key>/page/<page>")
+@cache.cached()
 def keyword_quotes(key, page):
     with db_session(db) as session:
         try:
@@ -70,6 +74,7 @@ def keyword_quotes(key, page):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
+@cache.cached()
 def related_quotes(key1, key2, page):
     with db_session(db) as session:
         try:

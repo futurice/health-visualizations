@@ -99,9 +99,7 @@ def map_abbreviations(stems, parents, vocab):
     for word in vocab:
         for stem in stems:
             if word.startswith(stem):
-                parents[word] = parents[stem]
-                #out("Mapping", word, parents[word])
-
+                merge_stems(parents[word], parents[stem])
 
 def find_candidates(post_counts, grandparents, parents, db):
     representative_candidates = {}
@@ -133,14 +131,13 @@ def find_representatives(candidates, grandparents):
         if parent not in candidates:
             representatives[parent] = parent
             continue
-        for child in candidates[parent]:
-            val_highest = 0
-            child_highest = ''
-            for child, val in candidates[parent].iteritems():
-                if val > val_highest:
-                    val_highest = val
-                    child_highest = child
-            representatives[parent] = child_highest
+        val_highest = 0
+        child_highest = ''
+        for child, val in candidates[parent].iteritems():
+            if val > val_highest:
+                val_highest = val
+                child_highest = child
+        representatives[parent] = child_highest
     return representatives
 
 def collect_post_sets(parents, grandparents, db):
@@ -218,12 +215,8 @@ class Word_Matcher():
     """ Returns baskets of abbreviations for each keyword in grandparents set. """
 def get_baskets(db, parents, grandparents):
     baskets = dict()
-
-    temp_helper = set()
-
     for keyword in grandparents:
         baskets[keyword] = set()
-
     for post in db.query(Post).all():
         matcher = Word_Matcher(post)
         for i in range(len(matcher.lemmatized)):
@@ -233,8 +226,16 @@ def get_baskets(db, parents, grandparents):
             if parent in grandparents:
                 baskets[parent].add(lemm_word)
                 baskets[parent].add(orig_word)
-
     return baskets
+
+def check_for_basket_conflicts(basket, seen):
+    for parent in basket:
+        for search_term in basket[parent]:
+            if search_term in seen and seen[search_term] != parent:
+                print 'Conflict with search term', search_term, ' -- parents both', seen[search_term], 'and', parent
+                raise
+            seen[search_term] = parent
+
 
 # Note: do not refactor "parent_curr" parameter away -- word can be original word,
 # in which case parent should still be the parent of the lemmatized version,
@@ -245,7 +246,11 @@ def fix_potential_ambiguity_for_word(word, parent_curr, parents, seen):
         return
     parent_prev = seen[word]
     if parent_curr != parent_prev:
+        if parent_curr.startswith('sikapii'):
+            print '    Merging ambiguous parents', parent_curr, parent_prev
+        seen[word] = parent_curr
         merge_stems(parents, parent_curr, parent_prev)
+
 
 # Finnish-Dep-Parser sometimes lemmatizes "kivut" into "kipu", sometimes into "kivut".
 # Furthermore, these lemmatized forms end up with different parents (themselves).
@@ -267,11 +272,11 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
                 # it CAN activate in cases where we merge stuff as we iterate posts.
                 parent = parents[lemm_word]
 
-            if parent not in grandparents:
-                # Not a drug/symptom word.
-                continue
+            #if parent not in grandparents:
+            #    # Not a drug/symptom word.
+            #    continue
 
-            # Check ambiguity for both both lemm_word and orig_word, merge ambiguous words.
+            # Check ambiguity for both lemm_word and orig_word, merge ambiguous words.
             fix_potential_ambiguity_for_word(lemm_word, parent, parents, seen)
             fix_potential_ambiguity_for_word(orig_word, parent, parents, seen)
 
@@ -347,6 +352,9 @@ class Associations:
         # Update parents and grandparents before merging ambiguous lemmatizations
         self.update_all_parents_and_grandparents()
 
+        print 'Checkpoint 1 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', self.drug_parents['sikapiikki'], ' / sikapiikk parent:', self.drug_parents['sikapiikk']
+        print '                 Parents in gp?', (self.drug_parents['sikapiikin'] in self.drug_grandparents), (self.drug_parents['sikapiikki'] in self.drug_grandparents), (self.drug_parents['sikapiikk'] in self.drug_grandparents)
+
         # Merge ambiguous lemmatizations
         merge_ambiguous_lemmatizations(db, self.drug_parents, self.drug_grandparents)
         merge_ambiguous_lemmatizations(db, self.symptom_parents, self.symptom_grandparents)
@@ -354,16 +362,24 @@ class Associations:
         # We need these updates after the merge as well
         self.update_all_parents_and_grandparents()
 
+        print 'Checkpoint 2 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', self.drug_parents['sikapiikki']
+
         print 'Part 1 done: merged similar special words'
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
         map_abbreviations(self.drug_stems, self.drug_parents, self.vocab)
+
+        print 'Checkpoint 3 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', \
+        self.drug_parents['sikapiikki']
 
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
 
         self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
         self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
+
+        print 'Checkpoint 4 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', \
+        self.drug_parents['sikapiikki']
 
         print 'Part 2 done: merged full vocabulary'
 
@@ -381,6 +397,10 @@ class Associations:
 
         self.drug_baskets = get_baskets(db, self.drug_parents, self.drug_grandparents)
         self.symptom_baskets = get_baskets(db, self.symptom_parents, self.symptom_grandparents)
+
+        seen = dict()
+        check_for_basket_conflicts(self.drug_baskets, seen)
+        check_for_basket_conflicts(self.drug_baskets, seen)
         print "Part 5 done: collected baskets"
 
     # Returns associated (drugs, drug_counts, symptoms, symptom_counts)

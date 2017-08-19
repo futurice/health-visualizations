@@ -99,7 +99,7 @@ def map_abbreviations(stems, parents, vocab):
     for word in vocab:
         for stem in stems:
             if word.startswith(stem):
-                merge_stems(parents[word], parents[stem])
+                merge_stems(parents, parents[word], parents[stem])
 
 def find_candidates(post_counts, grandparents, parents, db):
     representative_candidates = {}
@@ -232,8 +232,7 @@ def check_for_basket_conflicts(basket, seen):
     for parent in basket:
         for search_term in basket[parent]:
             if search_term in seen and seen[search_term] != parent:
-                print 'Conflict with search term', search_term, ' -- parents both', seen[search_term], 'and', parent
-                raise
+                raise('Conflict with search term', search_term, ' -- parents both', seen[search_term], 'and', parent)
             seen[search_term] = parent
 
 
@@ -246,8 +245,6 @@ def fix_potential_ambiguity_for_word(word, parent_curr, parents, seen):
         return
     parent_prev = seen[word]
     if parent_curr != parent_prev:
-        if parent_curr.startswith('sikapii'):
-            print '    Merging ambiguous parents', parent_curr, parent_prev
         seen[word] = parent_curr
         merge_stems(parents, parent_curr, parent_prev)
 
@@ -271,10 +268,6 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
                 # Note: do not refactor the while loop away,
                 # it CAN activate in cases where we merge stuff as we iterate posts.
                 parent = parents[lemm_word]
-
-            #if parent not in grandparents:
-            #    # Not a drug/symptom word.
-            #    continue
 
             # Check ambiguity for both lemm_word and orig_word, merge ambiguous words.
             fix_potential_ambiguity_for_word(lemm_word, parent, parents, seen)
@@ -352,9 +345,6 @@ class Associations:
         # Update parents and grandparents before merging ambiguous lemmatizations
         self.update_all_parents_and_grandparents()
 
-        print 'Checkpoint 1 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', self.drug_parents['sikapiikki'], ' / sikapiikk parent:', self.drug_parents['sikapiikk']
-        print '                 Parents in gp?', (self.drug_parents['sikapiikin'] in self.drug_grandparents), (self.drug_parents['sikapiikki'] in self.drug_grandparents), (self.drug_parents['sikapiikk'] in self.drug_grandparents)
-
         # Merge ambiguous lemmatizations
         merge_ambiguous_lemmatizations(db, self.drug_parents, self.drug_grandparents)
         merge_ambiguous_lemmatizations(db, self.symptom_parents, self.symptom_grandparents)
@@ -362,24 +352,19 @@ class Associations:
         # We need these updates after the merge as well
         self.update_all_parents_and_grandparents()
 
-        print 'Checkpoint 2 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', self.drug_parents['sikapiikki']
-
         print 'Part 1 done: merged similar special words'
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
         map_abbreviations(self.drug_stems, self.drug_parents, self.vocab)
 
-        print 'Checkpoint 3 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', \
-        self.drug_parents['sikapiikki']
+        # We need to update these again
+        self.update_all_parents_and_grandparents()
 
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
 
         self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
         self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
-
-        print 'Checkpoint 4 sikapiikin parent:', self.drug_parents['sikapiikin'], ' / sikapiikki parent:', \
-        self.drug_parents['sikapiikki']
 
         print 'Part 2 done: merged full vocabulary'
 
@@ -593,8 +578,8 @@ if __name__ == "__main__":
         a.train(session)
 
         # Drugs and symptoms must be inserted to db before calculating dosages
-        populate_drugs_or_symptoms(session, Symptom, a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_post_counts)
         populate_drugs_or_symptoms(session, Drug, a.drug_grandparents, a.drug_baskets, a.drug_representatives, a.drug_post_counts)
+        populate_drugs_or_symptoms(session, Symptom, a.symptom_grandparents, a.symptom_baskets, a.symptom_representatives, a.symptom_post_counts)
 
         # Calculate dosages; populate bridge_dosage_quotes and update drugs.data to include dosages
         d = scripts.dosages.Dosages(a.drug_parents, a.drug_grandparents, a.drug_representatives)

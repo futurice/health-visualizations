@@ -77,7 +77,7 @@ def merge_similar(parents, words):
 
             # Merge stems which are substrings of each others' start
             # For longer stems also merge when editdistance=1 (SSRI != SNRI)
-            if (len1 >= 6 and len2 >= 6 and get_edit_distance(stem, stem2) == 1) \
+            if (len1 >= 5 and len2 >= 5 and get_edit_distance(stem, stem2) == 1) \
             or (stem.startswith(stem2) or stem2.startswith(stem)):
                 merge_stems(parents, stem, stem2)
 
@@ -157,7 +157,7 @@ def collect_post_sets(parents, grandparents, db):
 
 # Iterate posts with keyword, count associations
 def count_associations(keyword, parents, grandparents, post_sets):
-    counts = {}
+    counts = {} # TODO refactor to speed this up: preprocess posts to create sets of key terms, then for all posts iterate all pairs of key terms in a single pass!
     for parent in grandparents:
         counts[parent] = 0
     for post in post_sets[keyword]:
@@ -226,6 +226,7 @@ def get_baskets(db, parents, grandparents):
             if parent in grandparents:
                 baskets[parent].add(lemm_word)
                 baskets[parent].add(orig_word)
+
     return baskets
 
 def check_for_basket_conflicts(basket, seen):
@@ -268,6 +269,9 @@ def merge_ambiguous_lemmatizations(db, parents, grandparents):
                 # Note: do not refactor the while loop away,
                 # it CAN activate in cases where we merge stuff as we iterate posts.
                 parent = parents[lemm_word]
+
+            if parent not in grandparents:
+                continue
 
             # Check ambiguity for both lemm_word and orig_word, merge ambiguous words.
             fix_potential_ambiguity_for_word(lemm_word, parent, parents, seen)
@@ -345,13 +349,6 @@ class Associations:
         # Update parents and grandparents before merging ambiguous lemmatizations
         self.update_all_parents_and_grandparents()
 
-        # Merge ambiguous lemmatizations
-        merge_ambiguous_lemmatizations(db, self.drug_parents, self.drug_grandparents)
-        merge_ambiguous_lemmatizations(db, self.symptom_parents, self.symptom_grandparents)
-
-        # We need these updates after the merge as well
-        self.update_all_parents_and_grandparents()
-
         print 'Part 1 done: merged similar special words'
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
@@ -362,6 +359,15 @@ class Associations:
 
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
+
+
+
+
+        merge_ambiguous_lemmatizations(db, self.drug_parents, self.drug_grandparents)
+        merge_ambiguous_lemmatizations(db, self.symptom_parents, self.symptom_grandparents)
+
+        # We need these updates after the merge as well
+        self.update_all_parents_and_grandparents()
 
         self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
         self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
@@ -564,7 +570,7 @@ if __name__ == "__main__":
         word_lists_folder = os.path.join('..', '..', 'how-to-get-healthy', 'word_lists')
         data_json_path = os.path.join(processed_data_folder, 'data.json')
         drugs_path = os.path.join(word_lists_folder, 'drugs_stemmed.txt')
-        symptom_path = os.path.join(word_lists_folder, 'symptoms_both_ways_stemmed.txt')
+        symptom_path = os.path.join(word_lists_folder, 'symptoms_three_ways.txt')
 
         initialize_db()
 

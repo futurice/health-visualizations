@@ -1,8 +1,16 @@
-# Health Visualizations (Suomi24 data)
+# Nettipuoskari backend
 
-## Development
+This repository contains the backend for [Nettipuoskari](https://www.nettipuoskari.fi).
 
-Prequisites
+### Prerequisites
+
+See [related repository](https://github.com/futurice/how-to-get-healthy) for how to produce the following files:
+
+* `data.json`
+* `drugs_stemmed.txt`
+* `symptoms_three_ways.txt`
+
+### Set up
 
 * Python 2
 * flask
@@ -10,10 +18,13 @@ Prequisites
 * sudo apt-get install python-psycopg2
 * pip install psycopg2
 * pip install flask-cache
+* [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
 * Postgres DB
-    * Set `$PSQL_USERNAME` and `$PSQL_DB`
+    * Set env variables `$PSQL_USERNAME`, `$PSQL_PASSWORD` and `$PSQL_DB`
 
-Instructions
+### Use
 
-* Run `models.py` to create tables and `associations.py` to populate them. 
-* Start server with `FLASK_APP=app.py FLASK_DEBUG=1 flask run` for development.
+* Create and populate the database with `associations.py`
+* Run backend server locally with `heroku local`
+* Push to staging server before pushing to production
+* See [instructions](UPDATE_DB.md) for updating the production database

@@ -360,9 +360,6 @@ class Associations:
         # Mapping full vocabulary to symptoms by using startswith(stem) provides too many false positives!
         # Instead, let's rely on finnish-dep-parser's lemmatization for symptoms
 
-
-
-
         merge_ambiguous_lemmatizations(db, self.drug_parents, self.drug_grandparents)
         merge_ambiguous_lemmatizations(db, self.symptom_parents, self.symptom_grandparents)
 

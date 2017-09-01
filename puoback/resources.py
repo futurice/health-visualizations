@@ -132,6 +132,7 @@ def show_symptom(symptom):
 @app.route("/most_common/<resource>")
 @cache.cached()
 def common(resource):
+    print('Not found in cache', file=sys.stderr)
     with db_session(db) as session:
         if resource == "drugs":
             query = session.query(Drug).order_by(Drug.data['post_count'].desc())

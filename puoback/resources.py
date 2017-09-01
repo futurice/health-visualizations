@@ -88,7 +88,7 @@ def related_quotes(key1, key2, page):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/search/<term>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def show_drug_or_symptom(term):
     with db_session(db) as session:
         try:
@@ -98,7 +98,7 @@ def show_drug_or_symptom(term):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/drugs/<drug>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def show_drug(drug):
     with db_session(db) as session:
         try:
@@ -118,7 +118,7 @@ def symptoms():
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/symptoms/<symptom>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def show_symptom(symptom):
     with db_session(db) as session:
         try:

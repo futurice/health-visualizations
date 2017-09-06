@@ -559,6 +559,69 @@ def populate_posts(db, data_json_path):
     db.execute("COPY posts FROM '" + csv_file_path + "' DELIMITER '~' CSV HEADER;")
     db.commit()
 
+def create_csv_for_analysis(db):
+    with open('nettipuoskari_baskets.csv', 'wb') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=',', lineterminator='\n')
+        csv_writer.writerow(['representative', 'count', 'aliases'])
+        for drug in db.query(Drug).all():
+            basket = ""
+            for thing in drug.data["basket"]:
+                basket += thing + " "
+            csv_writer.writerow([drug.name.encode("utf-8"), drug.data["post_count"], basket.encode("utf-8")])
+            print(drug.name.encode("utf-8"), drug.data["post_count"], basket.encode("utf-8"))
+        for symptom in db.query(Symptom).all():
+            basket = ""
+            for thing in symptom.data["basket"]:
+                basket += thing + " "
+            csv_writer.writerow([symptom.name.encode("utf-8"), symptom.data["post_count"], basket.encode("utf-8")])
+            print(symptom.name.encode("utf-8"), symptom.data["post_count"], basket.encode("utf-8"))
+    with open('nettipuoskari_associations.csv', 'wb') as csvfile:
+        csv_writer = csv.writer(csvfile, delimiter=',', lineterminator='\n')
+        drug_names = []
+        for drug in db.query(Drug).all():
+            drug_names.append(drug.name.encode("utf-8"))
+        symptom_names = []
+        for symptom in db.query(Symptom).all():
+            symptom_names.append(symptom.name.encode("utf-8"))
+        print [''] + drug_names + symptom_names
+        csv_writer.writerow([''] + drug_names + symptom_names)
+        for drug in drug_names:
+            relevances = []
+            revmap = {}
+            entity = db.query(Drug).filter(Drug.name == drug).one()
+            for key in entity.data["associated_drugs"]:
+                val = entity.data["associated_drugs"][key]['value']
+                revmap[key.encode("utf-8")] = int(val)
+            for drug2 in drug_names:
+                val = revmap[drug2] if drug2 in revmap else 'NA'.encode("utf-8")
+                relevances.append(val)
+            for key in entity.data["associated_symptoms"]:
+                val = entity.data["associated_symptoms"][key]['value']
+                revmap[key.encode("utf-8")] = int(val)
+            for symptom2 in symptom_names:
+                val = revmap[symptom2] if symptom2 in revmap else 'NA'.encode("utf-8")
+                relevances.append(val)
+            print [drug] + relevances
+            csv_writer.writerow([drug] + relevances)
+        for symptom in symptom_names:
+            relevances = []
+            revmap = {}
+            entity = db.query(Symptom).filter(Symptom.name == symptom).one()
+            for key in entity.data["associated_drugs"]:
+                val = entity.data["associated_drugs"][key]['value']
+                revmap[key.encode("utf-8")] = int(val)
+            for drug2 in drug_names:
+                val = revmap[drug2] if drug2 in revmap else 'NA'.encode("utf-8")
+                relevances.append(val)
+            for key in entity.data["associated_symptoms"]:
+                val = entity.data["associated_symptoms"][key]['value']
+                revmap[key.encode("utf-8")] = int(val)
+            for symptom2 in symptom_names:
+                val = revmap[symptom2] if symptom2 in revmap else 'NA'.encode("utf-8")
+                relevances.append(val)
+            print [symptom] + relevances
+            csv_writer.writerow([symptom] + relevances)
+
 
 if __name__ == "__main__":
     create_app().app_context().push()
@@ -594,3 +657,4 @@ if __name__ == "__main__":
         populate_search_terms(session)
 
         create_indexes(confirm=True)
+

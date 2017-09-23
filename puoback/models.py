@@ -80,22 +80,25 @@ class Post(db.Model):
 
     @staticmethod
     def find_keyword_quotes(db_session, res, page):
-        page = int(page)
-        if Drug == type(res):
-            Table = Bridge_Drug_Post
-            condition = Table.drug_id == res.id
-        else:
-            Table = Bridge_Symptom_Post
-            condition = Table.symptom_id == res.id
+        # Temporary performance fix
+        return Post.find_related_quotes(db_session, res, res, page)
 
-        all_posts_query = (
-            db_session
-            .query(Post.url, Post.original)
-            .join(Table, Table.post_id == Post.id)
-            .filter(condition)
-            .subquery()
-        )
-        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
+        # TODO: find out why the code below is super slow in some cases, eg. kipu
+        # page = int(page)
+        # if Drug == type(res):
+        #     Table = Bridge_Drug_Post
+        #     condition = Table.drug_id == res.id
+        # else:
+        #     Table = Bridge_Symptom_Post
+        #     condition = Table.symptom_id == res.id
+        #
+        # all_posts_query = (
+        #     db_session
+        #         .query(Post.url, Post.original)
+        #         .join(Table, Table.post_id == Post.id)
+        #         .filter(condition)
+        # )
+        # return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
 
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):

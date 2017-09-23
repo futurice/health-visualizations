@@ -18,7 +18,7 @@ def route_test():
 
 
 @app.route("/drugs")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def drugs():
     with db_session(db) as session:
         drugs = session.query(Drug).all()
@@ -26,7 +26,7 @@ def drugs():
 
 
 @app.route("/dosage_quotes/<drug>/<dosage>/page/<page>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def dosage_quotes(drug, dosage, page):
     with db_session(db) as session:
         posts, page_count = Post.find_dosage_quotes(session, drug, dosage, page)
@@ -39,7 +39,7 @@ def find_search_term(session, key):
 
 
 @app.route("/pagecount/<key1>/<key2>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def page_count(key1, key2):
     with db_session(db) as session:
         try:
@@ -51,7 +51,7 @@ def page_count(key1, key2):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/baskets/<key>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def basket(key):
     with db_session(db) as session:
         try:
@@ -61,7 +61,7 @@ def basket(key):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/keyword_quotes/<key>/page/<page>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def keyword_quotes(key, page):
     with db_session(db) as session:
         try:
@@ -74,7 +74,7 @@ def keyword_quotes(key, page):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def related_quotes(key1, key2, page):
     with db_session(db) as session:
         try:
@@ -108,7 +108,7 @@ def show_drug(drug):
             return 'Not found', 404, CONTENT_TYPE
 
 @app.route("/symptoms")
-@cache.cached()
+@cache.cached(timeout=999999999)
 def symptoms():
     with db_session(db) as session:
         try:

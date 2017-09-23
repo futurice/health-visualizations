@@ -93,6 +93,7 @@ class Post(db.Model):
             .query(Post.url, Post.original)
             .join(Table, Table.post_id == Post.id)
             .filter(condition)
+            .subquery()
         )
         return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
 

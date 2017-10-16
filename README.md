@@ -25,5 +25,6 @@ See [related repository](https://github.com/futurice/how-to-get-healthy) for how
 
 * Create and populate the database with `associations.py`
 * Run backend server locally with `heroku local`
+    * http://localhost:5000/drugs
 * Push to staging server before pushing to production
 * See [instructions](UPDATE_DB.md) for updating the production database

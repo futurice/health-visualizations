@@ -16,8 +16,7 @@ See [related repository](https://github.com/futurice/how-to-get-healthy) for how
 * flask
 * sqlalchemy
 * sudo apt-get install python-psycopg2
-* pip install psycopg2
-* pip install flask-cache
+* pip install -r requirements.txt
 * [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
 * Postgres DB
     * Set env variables `$PSQL_USERNAME`, `$PSQL_PASSWORD` and `$PSQL_DB`

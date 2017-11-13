@@ -28,8 +28,7 @@ def print_query(q):
 def query_builder(session, Table1, Table2, condition1, condition2):
     return session.query(Table1.post_id)\
         .join(Table2, Table1.post_id == Table2.post_id)\
-        .filter(and_(condition1, condition2))\
-        .subquery()
+        .filter(and_(condition1, condition2))
 
 class Post(db.Model):
     __tablename__ = 'posts'
@@ -70,35 +69,12 @@ class Post(db.Model):
         else:
             Table2 = aliased(Bridge_Symptom_Post)
             condition2 = Table2.symptom_id == res2.id
-        sq = query_builder(db_session, Table1, Table2, condition1, condition2)
-        all_posts_query = (
-            db_session
-                .query(Post.url, Post.original)
-                .join(sq, sq.c.post_id == Post.id)
-        )
-        return Post.get_page_count(all_posts_query)
+        return Post.get_page_count(query_builder(db_session, Table1, Table2, condition1, condition2))
 
     @staticmethod
     def find_keyword_quotes(db_session, res, page):
-        # Temporary performance fix
+        # TODO: write this function without this hack and without sacrificing performance.
         return Post.find_related_quotes(db_session, res, res, page)
-
-        # TODO: find out why the code below is super slow in some cases, eg. kipu
-        # page = int(page)
-        # if Drug == type(res):
-        #     Table = Bridge_Drug_Post
-        #     condition = Table.drug_id == res.id
-        # else:
-        #     Table = Bridge_Symptom_Post
-        #     condition = Table.symptom_id == res.id
-        #
-        # all_posts_query = (
-        #     db_session
-        #         .query(Post.url, Post.original)
-        #         .join(Table, Table.post_id == Post.id)
-        #         .filter(condition)
-        # )
-        # return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
 
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):
@@ -116,14 +92,15 @@ class Post(db.Model):
             Table2 = aliased(Bridge_Symptom_Post)
             condition2 = Table2.symptom_id == res2.id
 
-        sq = query_builder(db_session, Table1, Table2, condition1, condition2)
+        q = query_builder(db_session, Table1, Table2, condition1, condition2)
+        sq = q.subquery()
         all_posts_query = (
             db_session
             .query(Post.url, Post.original)
             .join(sq, sq.c.post_id == Post.id)
         )
         #print_query(posts)
-        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(all_posts_query)
+        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(q) # For performance reasons use q here
 
     @staticmethod
     def find_dosage_quotes(db_session, drug_name, dosage, page):

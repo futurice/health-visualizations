@@ -1,10 +1,10 @@
-# Nettipuoskari backend
+# Lääketutka backend
 
-This repository contains the backend for [Nettipuoskari](https://www.nettipuoskari.fi).
+This repository contains the backend for [Lääketutka](https://www.laaketutka.fi). You also need the [frontend](https://github.com/futurice/health-visualizations-front).
 
 ### Prerequisites
 
-See [related repository](https://github.com/futurice/how-to-get-healthy) for how to produce the following files:
+See [related repository](https://github.com/futurice/laaketutka-prereqs) for how to produce the following files:
 
 * `data.json`
 * `drugs_stemmed.txt`

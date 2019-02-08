@@ -137,10 +137,10 @@ def common(resource):
     if resource not in ad_hoc_cache:
         with db_session(db) as session:
             if resource == "drugs":
-                query = session.query(Drug).order_by(Drug.data['post_count'].desc())
+                query = session.query(Drug).order_by(Drug.data['post_count'].desc()).limit(50)
                 results = [(drug.name, drug.data['post_count']) for drug in query.all()]
             elif resource == "symptoms":
-                query = session.query(Symptom).order_by(Symptom.data['post_count'].desc())
+                query = session.query(Symptom).order_by(Symptom.data['post_count'].desc()).limit(50)
                 results = [(symptom.name, symptom.data['post_count']) for symptom in query.all()]
         ad_hoc_cache[resource] = results
 

@@ -23,7 +23,7 @@ app = Flask('app')
 app.config['SQLALCHEMY_DATABASE_URI'] = PSQL_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy()
-cache = Cache(config={'CACHE_TYPE': 'simple', 'CACHE_THRESHOLD}': 10000})
+cache = Cache(config={'CACHE_TYPE': 'simple', 'CACHE_THRESHOLD': 10000})
 CORS(app)
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
 

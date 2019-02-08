@@ -127,18 +127,22 @@ def show_symptom(symptom):
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+ad_hoc_cache = {}
 
 # Resource e.g drugs, symptoms
 @app.route("/most_common/<resource>")
 @cache.cached(timeout=999999999)
 def common(resource):
-    print('Most_common/' + resource + ' not found in cache', file=sys.stderr)
-    with db_session(db) as session:
-        if resource == "drugs":
-            query = session.query(Drug).order_by(Drug.data['post_count'].desc())
-            results = [(drug.name, drug.data['post_count']) for drug in query.all()]
-        elif resource == "symptoms":
-            query = session.query(Symptom).order_by(Symptom.data['post_count'].desc())
-            results = [(symptom.name, symptom.data['post_count']) for symptom in query.all()]
+    # Flask cache keeps dropping stuff prematurely, we want front page to always load fast.
+    if resource not in ad_hoc_cache:
+        with db_session(db) as session:
+            if resource == "drugs":
+                query = session.query(Drug).order_by(Drug.data['post_count'].desc())
+                results = [(drug.name, drug.data['post_count']) for drug in query.all()]
+            elif resource == "symptoms":
+                query = session.query(Symptom).order_by(Symptom.data['post_count'].desc())
+                results = [(symptom.name, symptom.data['post_count']) for symptom in query.all()]
+        ad_hoc_cache[resource] = results
 
-        return jsonify(results), 200, CONTENT_TYPE
+    return jsonify(ad_hoc_cache[resource]), 200, CONTENT_TYPE
+

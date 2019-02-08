@@ -73,8 +73,25 @@ class Post(db.Model):
 
     @staticmethod
     def find_keyword_quotes(db_session, res, page):
-        # TODO: write this function without this hack and without sacrificing performance.
-        return Post.find_related_quotes(db_session, res, res, page)
+        # return Post.find_related_quotes(db_session, res, res, page)
+        page = int(page)
+        if Drug == type(res):
+            Table = Bridge_Drug_Post
+            condition = Table.drug_id == res.id
+        else:
+            Table = Bridge_Symptom_Post
+            condition = Table.symptom_id == res.id
+
+        q = db_session.query(Table.post_id).filter(condition)
+        sq = q.subquery()
+        all_posts_query = (
+            db_session
+                .query(Post.url, Post.original)
+                .join(sq, sq.c.post_id == Post.id)
+        )
+        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(q)  # For performance reasons use q here
+
+
 
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):

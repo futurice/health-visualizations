@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t health-vizualizations .
+docker build -t health-visualizations .

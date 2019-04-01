@@ -52,7 +52,6 @@ class Post(db.Model):
             query
                 .offset((page - 1) * PAGE_SIZE)
                 .limit(PAGE_SIZE)
-                .all()
         )
 
     @staticmethod
@@ -83,14 +82,15 @@ class Post(db.Model):
             condition = Table.symptom_id == res.id
 
         q = db_session.query(Table.post_id).filter(condition)
-        sq = q.subquery()
-        all_posts_query = (
+        page_count = Post.get_page_count(q)  # For performance reasons use q here
+        sq = Post.get_page_posts(q, page).subquery()
+        page_posts = (
             db_session
                 .query(Post.url, Post.original)
                 .join(sq, sq.c.post_id == Post.id)
+                .all()
         )
-        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(q)  # For performance reasons use q here
-
+        return page_posts, page_count
 
 
     @staticmethod
@@ -110,14 +110,17 @@ class Post(db.Model):
             condition2 = Table2.symptom_id == res2.id
 
         q = query_builder(db_session, Table1, Table2, condition1, condition2)
-        sq = q.subquery()
-        all_posts_query = (
+        page_count = Post.get_page_count(q) # For performance reasons use q here
+
+        sq = Post.get_page_posts(q, page).subquery()
+        page_posts = (
             db_session
             .query(Post.url, Post.original)
             .join(sq, sq.c.post_id == Post.id)
+            .all()
         )
-        #print_query(posts)
-        return Post.get_page_posts(all_posts_query, page), Post.get_page_count(q) # For performance reasons use q here
+        #print_query(page_posts)
+        return page_posts, page_count
 
     @staticmethod
     def find_dosage_quotes(db_session, drug_name, dosage, page):
@@ -130,7 +133,7 @@ class Post(db.Model):
             .filter(and_(Bridge_Dosage_Quote.drug_id == drug.id,
                          Bridge_Dosage_Quote.dosage_mg == dosage))
         )
-        return Post.get_page_posts(bridge_q, page), Post.get_page_count(bridge_q)
+        return Post.get_page_posts(bridge_q, page).all(), Post.get_page_count(bridge_q)
 
 class Drug(db.Model):
     __tablename__ = 'drugs'

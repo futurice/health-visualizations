@@ -25,7 +25,19 @@ def print_query(q):
 
 
 # Helper method for Post.find_related_quotes()
-def query_builder(session, Table1, Table2, condition1, condition2):
+def query_builder(session, res1, res2):
+    if Drug == type(res1):
+        Table1 = Bridge_Drug_Post
+        condition1 = Table1.drug_id == res1.id
+    else:
+        Table1 = Bridge_Symptom_Post
+        condition1 = Table1.symptom_id == res1.id
+    if Drug == type(res2):
+        Table2 = aliased(Bridge_Drug_Post)
+        condition2 = Table2.drug_id == res2.id
+    else:
+        Table2 = aliased(Bridge_Symptom_Post)
+        condition2 = Table2.symptom_id == res2.id
     return session.query(Table1.post_id)\
         .join(Table2, Table1.post_id == Table2.post_id)\
         .filter(and_(condition1, condition2))
@@ -50,30 +62,16 @@ class Post(db.Model):
     def get_page_posts(query, page):
         return (
             query
-                .offset((page - 1) * PAGE_SIZE)
+                .offset((int(page) - 1) * PAGE_SIZE)
                 .limit(PAGE_SIZE)
         )
 
     @staticmethod
     def find_page_count(db_session, res1, res2):
-        if Drug == type(res1):
-            Table1 = Bridge_Drug_Post
-            condition1 = Table1.drug_id == res1.id
-        else:
-            Table1 = Bridge_Symptom_Post
-            condition1 = Table1.symptom_id == res1.id
-        if Drug == type(res2):
-            Table2 = aliased(Bridge_Drug_Post)
-            condition2 = Table2.drug_id == res2.id
-        else:
-            Table2 = aliased(Bridge_Symptom_Post)
-            condition2 = Table2.symptom_id == res2.id
-        return Post.get_page_count(query_builder(db_session, Table1, Table2, condition1, condition2))
+        return Post.get_page_count(query_builder(db_session, res1, res2))
 
     @staticmethod
     def find_keyword_quotes(db_session, res, page):
-        # return Post.find_related_quotes(db_session, res, res, page)
-        page = int(page)
         if Drug == type(res):
             Table = Bridge_Drug_Post
             condition = Table.drug_id == res.id
@@ -82,7 +80,7 @@ class Post(db.Model):
             condition = Table.symptom_id == res.id
 
         q = db_session.query(Table.post_id).filter(condition)
-        page_count = Post.get_page_count(q)  # For performance reasons use q here
+        page_count = Post.get_page_count(q)
         sq = Post.get_page_posts(q, page).subquery()
         page_posts = (
             db_session
@@ -95,23 +93,8 @@ class Post(db.Model):
 
     @staticmethod
     def find_related_quotes(db_session, res1, res2, page):
-        page = int(page)
-        if Drug == type(res1):
-            Table1 = Bridge_Drug_Post
-            condition1 = Table1.drug_id == res1.id
-        else:
-            Table1 = Bridge_Symptom_Post
-            condition1 = Table1.symptom_id == res1.id
-        if Drug == type(res2):
-            Table2 = aliased(Bridge_Drug_Post)
-            condition2 = Table2.drug_id == res2.id
-        else:
-            Table2 = aliased(Bridge_Symptom_Post)
-            condition2 = Table2.symptom_id == res2.id
-
-        q = query_builder(db_session, Table1, Table2, condition1, condition2)
-        page_count = Post.get_page_count(q) # For performance reasons use q here
-
+        q = query_builder(db_session, res1, res2)
+        page_count = Post.get_page_count(q)
         sq = Post.get_page_posts(q, page).subquery()
         page_posts = (
             db_session
@@ -124,7 +107,6 @@ class Post(db.Model):
 
     @staticmethod
     def find_dosage_quotes(db_session, drug_name, dosage, page):
-        page = int(page)
         drug = Drug.find_drug(db_session, drug_name)
         bridge_q = (
             db_session

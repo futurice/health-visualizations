@@ -1,16 +1,17 @@
 # Setting up Azure Web App Service
 
-## Push image to registry
+
 
 ## Setup
 
 Using subscription Laaketutka under FutuHosting, needs to first create storage and file share for the CLI to work at all.
 
-After then follow these instructions:
-https://docs.microsoft.com/en-us/azure/app-service/containers/tutorial-custom-docker-image
+Grant access to ACR etc for AD user (you)
 
 
 ## Create Docker image and push to Container registry
+
+https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-docker-cli
 
 First build the Docker image locally using (build_docker-script)[build_docker.sh].
 
@@ -18,16 +19,31 @@ Docker registry is already created to Azure Container Registries with the name o
 
 ### Pushing image to registry:
 
-docker login laaketutka.azurecr.io
+Login to Azure. Make sure you have access to ACR repository. (Configured )
+
+```   
+az login
+az acr login --name laaketutka
+```   
+
+Then build the image and after that tag & push it:
+
+```   
 docker tag health-visualizations laaketutka.azurecr.io/health-visualizations
 docker push laaketutka.azurecr.io/health-visualizations
+```   
+
 
 ###############################
 # NOTE: Following lines are for the test app, TODO deploy to prod
 ###############################
 
+## Deploy to App Services
 
-## Create a Linux App Service plan
+### Create a Linux App Service plan
+
+https://docs.microsoft.com/en-us/azure/app-service/containers/tutorial-custom-docker-image
+
 
 ```
 az appservice plan create --name laaketutkaAppServicePlan --resource-group laaketutka-prod --sku B1 --is-linux
@@ -70,7 +86,7 @@ az appservice plan create --name laaketutkaAppServicePlan --resource-group laake
   "workerTierName": null
 }
 
-## Create a web app
+### Create a web app
 
  ```   
 az webapp create --resource-group laaketutka-prod --plan laaketutkaAppServicePlan --name laaketutka-test-app --deployment-container-image-name paasovaara/azure-test:latest

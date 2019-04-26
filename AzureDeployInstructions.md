@@ -53,6 +53,31 @@ az webapp create --resource-group laaketutka-prod --plan laaketutkaAppServicePla
 
 ### Add service principal access to acr and add it to the application
 
+```
+export ACR_NAME=laaketutka
+export SERVICE_PRINCIPAL_NAME=laaketutka-service-principal
+
+# Obtain the full registry ID for subsequent command args
+ACR_REGISTRY_ID=$(az acr show --name $ACR_NAME --query id --output tsv)
+
+# Create the service principal with rights scoped to the registry.
+# Default permissions are for docker pull access. Modify the '--role'
+# argument value as desired:
+# acrpull:     pull only
+# acrpush:     push and pull
+# owner:       push, pull, and assign roles
+SP_PASSWD=$(az ad sp create-for-rbac --name http://$SERVICE_PRINCIPAL_NAME --scopes $ACR_REGISTRY_ID --role acrpull --query password --output tsv)
+SP_APP_ID=$(az ad sp show --id http://$SERVICE_PRINCIPAL_NAME --query appId --output tsv)
+
+# Output the service principal's credentials; use these in your services and
+# applications to authenticate to the container registry.
+echo "Service principal ID: $SP_APP_ID"
+echo "Service principal password: $SP_PASSWD"
+```
+
+```
+az webapp config container set --name laaketutka-app --resource-group laaketutka-prod --docker-custom-image-name laaketutka.azurecr.io/health-visualizations:latest --docker-registry-server-url https://laaketutka.azurecr.io --docker-registry-server-user <username> --docker-registry-server-password <password>
+```
 
 https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-aci
 https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/container-registry/container-registry-tutorial-quick-task.md

@@ -68,13 +68,11 @@ az webapp config container set --name laaketutka-app --resource-group laaketutka
 ```  
 az webapp config appsettings set --resource-group laaketutka-prod --name laaketutka-app --settings DATABASE_URL=postgres://username:password@host/dbname
 
-az webapp config appsettings set --resource-group laaketutka-prod --name laaketutka-app --settings WEBSITES_PORT=5000
+az webapp config appsettings set --resource-group laaketutka-prod --name laaketutka-app --settings WEBSITES_PORT=8000
 
 az webapp restart --resource-group laaketutka-prod --name laaketutka-app
 
 ```  
-
-az webapp config appsettings set --resource-group myResourceGroup --name <app-name> --settings WEBSITES_PORT=8000
 
 
 ## That's it!

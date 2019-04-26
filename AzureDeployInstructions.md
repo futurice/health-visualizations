@@ -33,11 +33,6 @@ docker tag health-visualizations laaketutka.azurecr.io/health-visualizations
 docker push laaketutka.azurecr.io/health-visualizations
 ```   
 
-
-###############################
-# NOTE: Following lines are for the test app, TODO deploy to prod
-###############################
-
 ## Deploy to App Services
 
 https://docs.microsoft.com/en-us/azure/app-service/containers/tutorial-custom-docker-image
@@ -56,21 +51,30 @@ az appservice plan create --name laaketutkaAppServicePlan --resource-group laake
 az webapp create --resource-group laaketutka-prod --plan laaketutkaAppServicePlan --name laaketutka-app --deployment-container-image-name laaketutka.azurecr.io/health-visualizations:latest
  ```
 
-### Add service principal access to acr
+### Add service principal access to acr and add it to the application
+
+
+https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-aci
+https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/container-registry/container-registry-tutorial-quick-task.md
 
 For pulling the image inside the virtual server
 
-https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-aci
-
+```   
+az webapp config container set --name laaketutka-app --resource-group laaketutka-prod --docker-custom-image-name laaketutka.azurecr.io/health-visualizations:latest --docker-registry-server-url https://laaketutka.azurecr.io --docker-registry-server-user <registry-username> --docker-registry-server-password <password>
+```   
 
 ### Add Env variables
 
 ```  
 az webapp config appsettings set --resource-group laaketutka-prod --name laaketutka-app --settings DATABASE_URL=postgres://username:password@host/dbname
+
+az webapp config appsettings set --resource-group laaketutka-prod --name laaketutka-app --settings WEBSITES_PORT=5000
+
 az webapp restart --resource-group laaketutka-prod --name laaketutka-app
 
 ```  
 
+az webapp config appsettings set --resource-group myResourceGroup --name <app-name> --settings WEBSITES_PORT=8000
 
 
 ## That's it!

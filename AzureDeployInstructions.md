@@ -75,10 +75,6 @@ echo "Service principal ID: $SP_APP_ID"
 echo "Service principal password: $SP_PASSWD"
 ```
 
-```
-az webapp config container set --name laaketutka-app --resource-group laaketutka-prod --docker-custom-image-name laaketutka.azurecr.io/health-visualizations:latest --docker-registry-server-url https://laaketutka.azurecr.io --docker-registry-server-user <username> --docker-registry-server-password <password>
-```
-
 https://docs.microsoft.com/en-us/azure/container-registry/container-registry-auth-aci
 https://github.com/MicrosoftDocs/azure-docs/blob/master/articles/container-registry/container-registry-tutorial-quick-task.md
 
@@ -97,7 +93,36 @@ az webapp config appsettings set --resource-group laaketutka-prod --name laaketu
 
 az webapp restart --resource-group laaketutka-prod --name laaketutka-app
 
-```  
+```
+
+
+### Firewall for the database
+
+az network vnet create \
+  -g laaketutka-prod \
+  -n laaketutka-db-vnet \
+  --address-prefixes 10.0.0.0/16 \
+  -l westeurope
+
+
+# Creates the service endpoint
+az network vnet subnet create \
+  -g laaketutka-prod \
+  -n laaketutka-db-subnet \
+  --vnet-name laaketutka-db-vnet \
+  --address-prefix 10.0.1.0/24 \
+  --service-endpoints Microsoft.SQL
+
+# Associate a network security group to a subnet
+az network vnet subnet update -g laaketutka-prod -n laaketutka-db-subnet --vnet-name laaketutka-db-vnet --network-security-group db-from-futu-vpn
+
+az postgres server vnet-rule create \
+  -n laaketutka-db-vnet-rule \
+  -g laaketutka-prod \
+  -s laaketutka-db-prod \
+  --vnet-name laaketutka-db-vnet \
+  --subnet laaketutka-db-subnet
+
 
 
 ## That's it!

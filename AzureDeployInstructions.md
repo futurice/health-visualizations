@@ -9,6 +9,15 @@ Using subscription Laaketutka under FutuHosting, needs to first create storage a
 Grant access to ACR etc for AD user (you)
 
 
+## Create a database
+
+```
+az postgres server create --admin-password <password> --admin-user master --name laaketutka-db-prod --location westeurope --resource-group laaketutka-prod --sku-name B_Gen5_1 --storage-size 30720
+```
+
+See the [instructions for populating the database](UPDATE_DB.md).
+
+
 ## Create Docker image and push to Container registry
 
 https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-docker-cli
@@ -29,6 +38,11 @@ az acr login --name laaketutka
 Then build the image and after that tag & push it:
 
 ```   
+# staging
+docker tag health-visualizations laaketutka.azurecr.io/health-visualizations:staging
+docker push laaketutka.azurecr.io/health-visualizations:staging
+
+# prod
 docker tag health-visualizations laaketutka.azurecr.io/health-visualizations
 docker push laaketutka.azurecr.io/health-visualizations
 ```   
@@ -42,14 +56,22 @@ https://docs.microsoft.com/en-us/azure/app-service/containers/tutorial-custom-do
 (Done already, no need to redo)
 
 ```
+# staging
+az appservice plan create --name laaketutkaAppServicePlanStaging --resource-group laaketutka-staging --sku F1 --is-linux
+
+# prod
 az appservice plan create --name laaketutkaAppServicePlan --resource-group laaketutka-prod --sku B1 --is-linux
 ```
 
 ### Create a web app
 
- ```   
-az webapp create --resource-group laaketutka-prod --plan laaketutkaAppServicePlan --name laaketutka-app --deployment-container-image-name laaketutka.azurecr.io/health-visualizations:latest
- ```
+```
+# staging
+az webapp create --resource-group laaketutka-staging --plan laaketutkaAppServicePlanStaging --name laaketutka-app-staging --deployment-container-image-name laaketutka.azurecr.io/health-visualizations:staging
+
+# prod
+saz webapp create --resource-group laaketutka-prod --plan laaketutkaAppServicePlan --name laaketutka-app --deployment-container-image-name laaketutka.azurecr.io/health-visualizations:latest
+```
 
 ### Add service principal access to acr and add it to the application
 

@@ -8,10 +8,5 @@ flask-caching
 flask-sqlalchemy
 gunicorn
 gevent
-#greenlet
 psycogreen
 Werkzeug
-
-# Debugging
-ipython
-#line-profiler

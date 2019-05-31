@@ -149,6 +149,6 @@ az postgres server vnet-rule create \
 
 ## That's it!
 
-http://laaketutka-test-app.azurewebsites.net/
+https://laaketutka-app-staging.azurewebsites.net/drugs
 
 (PS in case you need environment variables then look at the link above, there's instructions)

@@ -15,16 +15,49 @@ See [related repository](https://github.com/futurice/laaketutka-prereqs) for how
 * Python 2
 * flask
 * sqlalchemy
-* sudo apt-get install python-psycopg2
-* pip install -r requirements.txt
-* [Heroku CLI](https://devcenter.heroku.com/articles/heroku-cli)
+* [Azure commend line tools](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
 * Postgres DB
     * Set env variables `$PSQL_USERNAME`, `$PSQL_PASSWORD` and `$PSQL_DB`
 
-### Use
+### Prepare the database
 
-* Create and populate the database with `associations.py`
-* Run backend server locally with `heroku local`
-    * http://localhost:5000/drugs
-* Push to staging server before pushing to production
-* See [instructions](UPDATE_DB.md) for updating the production database
+Create and populate the database with `associations.py`.
+
+See [instructions](UPDATE_DB.md) for updating the production database.
+
+### Local development
+
+```bash
+sudo apt-get install python-psycopg2
+pip install -r requirements.txt -r requirements_dev.txt
+```
+
+### Run in Docker
+
+```bash
+./build_docker.sh
+
+export DATABASE_URL=postgres://<user>:<password>@<host>/<dbname>
+./run_in_docker.sh
+```
+
+Open [localhost:8000/drug](http://localhost:8000/drugs).
+
+## Deployment
+
+```bash
+az login
+az acr login --name laaketutka
+
+./build_docker.sh
+
+# staging
+docker tag health-visualizations laaketutka.azurecr.io/health-visualizations:staging
+docker push laaketutka.azurecr.io/health-visualizations:staging
+
+# prod
+docker tag health-visualizations laaketutka.azurecr.io/health-visualizations
+docker push laaketutka.azurecr.io/health-visualizations
+```
+
+See [AzureDeployInstructions.md](AzureDeployInstructions.md) for more information.

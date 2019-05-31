@@ -1,0 +1,15 @@
+GRANT ALL ON SCHEMA public TO PUBLIC;
+GRANT SELECT ON TABLE public.bridge_dosage_quotes TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.bridge_dosage_quotes_id_seq TO laaketutka_read_only;
+GRANT SELECT ON TABLE public.bridge_drug_posts TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.bridge_drug_posts_id_seq TO laaketutka_read_only;
+GRANT SELECT ON TABLE public.bridge_symptom_posts TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.bridge_symptom_posts_id_seq TO laaketutka_read_only;
+GRANT SELECT ON TABLE public.drugs TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.drugs_id_seq TO laaketutka_read_only;
+GRANT SELECT ON TABLE public.posts TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.posts_id_seq TO laaketutka_read_only;
+GRANT SELECT ON TABLE public.search_terms TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.search_terms_id_seq TO laaketutka_read_only;
+GRANT SELECT ON TABLE public.symptoms TO laaketutka_read_only;
+GRANT SELECT ON SEQUENCE public.symptoms_id_seq TO laaketutka_read_only;

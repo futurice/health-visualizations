@@ -12,7 +12,7 @@ Grant access to ACR etc for AD user (you)
 ## Create a database
 
 ```
-az postgres server create --admin-password <password> --admin-user master --name laaketutka-db-prod --location westeurope --resource-group laaketutka-prod --sku-name B_Gen5_1 --storage-size 30720
+az postgres server create --admin-password <password> --admin-user master --name laaketutka-db-staging --location westeurope --resource-group laaketutka-prod --sku-name B_Gen5_1 --storage-size 30720
 ```
 
 See the [instructions for populating the database](UPDATE_DB.md).
@@ -22,7 +22,7 @@ See the [instructions for populating the database](UPDATE_DB.md).
 
 https://docs.microsoft.com/en-us/azure/container-registry/container-registry-get-started-docker-cli
 
-First build the Docker image locally using (build_docker-script)[build_docker.sh].
+First build the Docker image locally using [build_docker-script](build_docker.sh).
 
 Docker registry is already created to Azure Container Registries with the name of laaketutka.
 
@@ -114,38 +114,42 @@ az webapp config appsettings set --resource-group laaketutka-prod --name laaketu
 az webapp config appsettings set --resource-group laaketutka-prod --name laaketutka-app --settings WEBSITES_PORT=8000
 
 az webapp restart --resource-group laaketutka-prod --name laaketutka-app
-
 ```
 
 
 ### Firewall for the database
 
+```bash
 az network vnet create \
-  -g laaketutka-prod \
+  -g laaketutka-staging \
   -n laaketutka-db-vnet \
   --address-prefixes 10.0.0.0/16 \
   -l westeurope
-
+```
 
 # Creates the service endpoint
+
+```bash
 az network vnet subnet create \
-  -g laaketutka-prod \
+  -g laaketutka-staging \
   -n laaketutka-db-subnet \
   --vnet-name laaketutka-db-vnet \
   --address-prefix 10.0.1.0/24 \
   --service-endpoints Microsoft.SQL
+```
 
 # Associate a network security group to a subnet
-az network vnet subnet update -g laaketutka-prod -n laaketutka-db-subnet --vnet-name laaketutka-db-vnet --network-security-group db-from-futu-vpn
+
+```bash
+az network vnet subnet update -g laaketutka-staging -n laaketutka-db-subnet --vnet-name laaketutka-db-vnet --network-security-group db-from-futu-vpn
 
 az postgres server vnet-rule create \
   -n laaketutka-db-vnet-rule \
-  -g laaketutka-prod \
-  -s laaketutka-db-prod \
+  -g laaketutka-staging \
+  -s laaketutka-db-staging \
   --vnet-name laaketutka-db-vnet \
   --subnet laaketutka-db-subnet
-
-
+```
 
 ## That's it!
 

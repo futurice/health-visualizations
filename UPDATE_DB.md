@@ -4,8 +4,8 @@ The database is only read from, never written to, so you can create it locally a
 
 * Create new database on the database server (for example, using pgAdmin)
 * Upload contents onto the new database
-    * pg_dump `db_name` > `file_name` --format custom
-    * pg_restore -h nettipuoskari-prod.crqdrenwhmiv.eu-central-1.rds.amazonaws.com -p 5432 -d `db_name` -U master `file_name`
+    * `pg_dump --format=directory --jobs 4 --file=laaketutka.dump --host=<host> --port=5432 --username=master nettipuoskari1`
+    * `pg_restore --clean --if-exists --create --format=directory --jobs 2 --host=<host> --port=5432 --username=master --dbname=laaketutka laaketutka.dump`
     * insert password
     * wait (shouldn't take more than a few hours)
 * Update access rights using psql:

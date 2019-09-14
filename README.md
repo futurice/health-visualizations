@@ -15,7 +15,7 @@ See [related repository](https://github.com/futurice/laaketutka-prereqs) for how
 * Python 2
 * flask
 * sqlalchemy
-* [Azure commend line tools](https://docs.microsoft.com/en-us/cli/azure/install-azure-cli?view=azure-cli-latest)
+* [Heroku command line tools](https://devcenter.heroku.com/articles/heroku-cli)
 * Postgres DB
     * Set env variables `$PSQL_USERNAME`, `$PSQL_PASSWORD` and `$PSQL_DB`
 
@@ -46,18 +46,11 @@ Open [localhost:8000/drug](http://localhost:8000/drugs).
 ## Deployment
 
 ```bash
-az login
-az acr login --name laaketutka
-
-./build_docker.sh
+heroku login
 
 # staging
-docker tag health-visualizations laaketutka.azurecr.io/health-visualizations:staging
-docker push laaketutka.azurecr.io/health-visualizations:staging
+git push heroku_staging master
 
 # prod
-docker tag health-visualizations laaketutka.azurecr.io/health-visualizations
-docker push laaketutka.azurecr.io/health-visualizations
+git push heroku master
 ```
-
-See [AzureDeployInstructions.md](AzureDeployInstructions.md) for more information.

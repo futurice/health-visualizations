@@ -13,4 +13,4 @@ class Progress_indicator:
         if self.curr % self.report_interval == 1:
             percent_info = str((100 * self.curr / self.max)) + '%'
             time_info = " (" + str(int(time.time() - self.start_time)) + " seconds worked so far)"
-            print "Progress at " + percent_info + time_info
+            print("Progress at " + percent_info + time_info)

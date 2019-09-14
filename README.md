@@ -12,7 +12,7 @@ See [related repository](https://github.com/futurice/laaketutka-prereqs) for how
 
 ### Set up
 
-* Python 2
+* Python 3
 * flask
 * sqlalchemy
 * [Heroku command line tools](https://devcenter.heroku.com/articles/heroku-cli)

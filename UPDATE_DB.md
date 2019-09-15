@@ -7,7 +7,8 @@ The database is only read from, never written to, so you can create it locally a
 * Create new database on the database server (alternatively, use pgAdmin)
     * `CREATE USER laaketutka_read_only PASSWORD <password>;`
     * `GRANT laaketutka_read_only TO master;`
-    * `CREATE DATABASE laaketutka OWNER laaketutka_read_only;`
+    * `CREATE DATABASE laaketutka OWNER master;`
+    * ´REVOKE ALL ON DATABASE laaketutka FROM public;´
 * Upload contents onto the new database
     * `pg_restore --format=directory --jobs 4 --host=<host> --port=5432 --username=master --dbname=laaketutka laaketutka.dump`
     * insert password

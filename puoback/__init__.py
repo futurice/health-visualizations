@@ -10,7 +10,7 @@ from flask_sqlalchemy import SQLAlchemy
 try:
     # Staging and production on Heroku
     PSQL_URL = os.environ['DATABASE_URL']
-except:
+except KeyError:
     # Local development
     PSQL_USERNAME = os.environ['PSQL_USERNAME']
     PSQL_PASSWORD = os.environ['PSQL_PASSWORD']

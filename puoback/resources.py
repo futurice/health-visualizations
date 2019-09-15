@@ -1,7 +1,5 @@
 from __future__ import print_function
 
-import sys
-
 from flask import jsonify
 from sqlalchemy.orm.exc import NoResultFound
 
@@ -10,6 +8,7 @@ from puoback.services import db_session
 from puoback.models import Post, Search_Term, Drug, Symptom
 
 CONTENT_TYPE = {'ContentType': 'application/json; charset=unicode'}
+
 
 @app.route("/test")
 @cache.cached()
@@ -34,6 +33,7 @@ def dosage_quotes(drug, dosage, page):
         combined = {"page_count": page_count, "posts": posts}
         return jsonify(combined), 200, CONTENT_TYPE
 
+
 def find_search_term(session, key):
     return Search_Term.find_drug_or_symptom(session, key)
 
@@ -50,6 +50,7 @@ def page_count(key1, key2):
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+
 @app.route("/baskets/<key>")
 @cache.cached(timeout=999999999)
 def basket(key):
@@ -59,6 +60,7 @@ def basket(key):
             return jsonify(res.data["basket"]), 200, CONTENT_TYPE
         except:
             return 'Not found', 404, CONTENT_TYPE
+
 
 @app.route("/keyword_quotes/<key>/page/<page>")
 @cache.cached(timeout=999999999)
@@ -72,6 +74,7 @@ def keyword_quotes(key, page):
             return jsonify(combined), 200, CONTENT_TYPE
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
+
 
 @app.route("/related_quotes/<key1>/<key2>/page/<page>")
 @cache.cached(timeout=999999999)
@@ -87,6 +90,7 @@ def related_quotes(key1, key2, page):
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+
 @app.route("/search/<term>")
 @cache.cached(timeout=999999999)
 def show_drug_or_symptom(term):
@@ -96,6 +100,7 @@ def show_drug_or_symptom(term):
             return jsonify(res.data), 200, CONTENT_TYPE
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
+
 
 @app.route("/drugs/<drug>")
 @cache.cached(timeout=999999999)
@@ -107,6 +112,7 @@ def show_drug(drug):
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+
 @app.route("/symptoms")
 @cache.cached(timeout=999999999)
 def symptoms():
@@ -117,6 +123,7 @@ def symptoms():
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
 
+
 @app.route("/symptoms/<symptom>")
 @cache.cached(timeout=999999999)
 def show_symptom(symptom):
@@ -126,6 +133,7 @@ def show_symptom(symptom):
             return jsonify(s.data), 200, CONTENT_TYPE
         except NoResultFound:
             return 'Not found', 404, CONTENT_TYPE
+
 
 ad_hoc_cache = {}
 

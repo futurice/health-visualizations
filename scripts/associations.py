@@ -7,8 +7,6 @@ import os
 import re
 
 import editdistance as edt
-from flask import Flask
-from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy.exc import IntegrityError
 from puoback.__init__ import create_app
 
@@ -44,7 +42,7 @@ def read_special_words(file_path):
             words.add(word)
             lastWord = word
     # Sanity check
-    print lastWord, " <<< should be the last word from ", file_path
+    print(f'{lastWord} <<< should be the last word from {file_path}')
     return words
 
 def compare_stems(stem1, stem2):
@@ -133,7 +131,7 @@ def find_representatives(candidates, grandparents):
             continue
         val_highest = 0
         child_highest = ''
-        for child, val in candidates[parent].iteritems():
+        for child, val in candidates[parent].items():
             if val > val_highest:
                 val_highest = val
                 child_highest = child
@@ -233,7 +231,7 @@ def check_for_basket_conflicts(basket, seen):
     for parent in basket:
         for search_term in basket[parent]:
             if search_term in seen and seen[search_term] != parent:
-                raise('Conflict with search term', search_term, ' -- parents both', seen[search_term], 'and', parent)
+                raise RuntimeError(f'Conflict with search term {search_term} -- parents both {seen[search_term]} and {parent}')
             seen[search_term] = parent
 
 
@@ -321,7 +319,7 @@ class Associations:
         self.symptom_grandparents = collect_grandparents(self.symptom_parents, self.symptom_stems)
 
     def train(self, db):
-        print 'Producing associations object...'
+        print('Producing associations object...')
 
         self.vocab = set()
         self.number_of_posts = db.query(Post).count()
@@ -329,7 +327,7 @@ class Associations:
             for word in custom_split(post.lemmatized):
                 self.vocab.add(word)
 
-        print 'Part 0 done: vocabulary size', len(self.vocab)
+        print(f'Part 0 done: vocabulary size {len(self.vocab)}')
 
         self.drug_stems = read_special_words(self.drugs_file)
         self.symptom_stems = read_special_words(self.symptoms_file)
@@ -349,7 +347,7 @@ class Associations:
         # Update parents and grandparents before merging ambiguous lemmatizations
         self.update_all_parents_and_grandparents()
 
-        print 'Part 1 done: merged similar special words'
+        print('Part 1 done: merged similar special words')
 
         # Mapping full vocabulary to known drug stems doesn't appear to cause too many false positives
         map_abbreviations(self.drug_stems, self.drug_parents, self.vocab)
@@ -369,7 +367,7 @@ class Associations:
         self.drug_grandparents = filter_nonexisting_grandparents(self.drug_parents, self.drug_grandparents, self.vocab)
         self.symptom_grandparents = filter_nonexisting_grandparents(self.symptom_parents, self.symptom_grandparents, self.vocab)
 
-        print 'Part 2 done: merged full vocabulary'
+        print('Part 2 done: merged full vocabulary')
 
         self.drug_post_counts = {}
         drug_rep_candidates = find_candidates(self.drug_post_counts, self.drug_grandparents, self.drug_parents, db)
@@ -377,11 +375,11 @@ class Associations:
         self.symptom_post_counts = {}
         symptom_rep_candidates = find_candidates(self.symptom_post_counts, self.symptom_grandparents, self.symptom_parents, db)
         self.symptom_representatives = find_representatives(symptom_rep_candidates, self.symptom_grandparents)
-        print 'Part 3 done: postcounts and representatives'
+        print('Part 3 done: postcounts and representatives')
 
         self.drug_post_sets = collect_post_sets(self.drug_parents, self.drug_grandparents, db)
         self.symptom_post_sets = collect_post_sets(self.symptom_parents, self.symptom_grandparents, db)
-        print "Part 4 done: collected postsets"
+        print("Part 4 done: collected postsets")
 
         self.drug_baskets = get_baskets(db, self.drug_parents, self.drug_grandparents)
         self.symptom_baskets = get_baskets(db, self.symptom_parents, self.symptom_grandparents)
@@ -389,17 +387,17 @@ class Associations:
         seen = dict()
         check_for_basket_conflicts(self.drug_baskets, seen)
         check_for_basket_conflicts(self.drug_baskets, seen)
-        print "Part 5 done: collected baskets"
+        print("Part 5 done: collected baskets")
 
     # Returns associated (drugs, drug_counts, symptoms, symptom_counts)
     def associated(self, keyword, minimum_sample_size_for_found_associations=1):
         if self.drug_parents[keyword] in self.drug_grandparents:
-            print 'Keyword recognized as drug', self.drug_representatives[self.drug_parents[keyword]]
+            print(f'Keyword recognized as drug {self.drug_representatives[self.drug_parents[keyword]]}')
             keyword = self.drug_parents[keyword]
             keyword_representative = self.drug_representatives[keyword]
             selected_post_sets = self.drug_post_sets
         elif self.symptom_parents[keyword] in self.symptom_grandparents:
-            print 'Keyword recognized as symptom', self.symptom_representatives[self.symptom_parents[keyword]]
+            print(f'Keyword recognized as symptom {self.symptom_representatives[self.symptom_parents[keyword]]}')
             keyword = self.symptom_parents[keyword]
             keyword_representative = self.symptom_representatives[keyword]
             selected_post_sets = self.symptom_post_sets
@@ -421,10 +419,10 @@ For performance reasons we write to file and then use Postgres COPY to import th
 def populate_postset_bridges(db, representatives, post_sets, entity_class, bridge_class, table_name, id_type):
 
     if len(db.query(bridge_class).limit(1).all()) > 0:
-        print bridge_class, 'table is not empty - skipping'
+        print(f'{bridge_class} table is not empty - skipping')
         return
     else:
-        print '\n\nPopulating', bridge_class, 'table...'
+        print(f'\n\nPopulating {bridge_class} table...')
 
     progress_indicator = Progress_indicator(len(post_sets))
     csv_file_path = os.path.abspath('/tmp/temp_' + table_name + '.csv')
@@ -462,10 +460,10 @@ def write_search_terms_to_csv(db, csv_writer, entity_class, next_free_id):
 
 def populate_search_terms(db):
     if len(db.query(Search_Term).limit(1).all()) > 0:
-        print 'Search_Terms table is not empty - skipping'
+        print('Search_Terms table is not empty - skipping')
         return
     else:
-        print '\n\nPopulating Search_Terms table...'
+        print('\n\nPopulating Search_Terms table...')
 
     csv_file_path = os.path.abspath('/tmp/temp_search_terms.csv')
     with open(csv_file_path, 'wb') as csvfile:
@@ -481,10 +479,10 @@ def populate_search_terms(db):
 def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, representatives, post_counts):
 
     if len(db.query(entity_class).limit(1).all()) > 0:
-        print entity_class, 'table is not empty - skipping'
+        print(f'{entity_class} table is not empty - skipping')
         return
     else:
-        print '\n\nPopulating', entity_class, 'table...'
+        print('\n\nPopulating {entity_class} table...')
 
     for resource in grandparents:
         created_json = dict()
@@ -494,7 +492,7 @@ def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, represen
         associated_drugs = dict()
         associated_symptoms = dict()
 
-        for assoc_drug, value in drug_assoc.iteritems():
+        for assoc_drug, value in drug_assoc.items():
             rn = a.drug_representatives[assoc_drug]
 
             associated_drugs[rn] = {
@@ -502,7 +500,7 @@ def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, represen
                 "count": drug_counts[assoc_drug]
             }
 
-        for assoc_symptom, value in symptom_assoc.iteritems():
+        for assoc_symptom, value in symptom_assoc.items():
             rn = a.symptom_representatives[assoc_symptom]
             associated_symptoms[rn] = {
                 "value": value,
@@ -525,17 +523,17 @@ def populate_drugs_or_symptoms(db, entity_class, grandparents, baskets, represen
             db.add(res)
             db.commit()
         except IntegrityError:
-            print "Already exists"
+            print("Already exists")
 
 
 def populate_posts(db, data_json_path):
     if len(db.query(Post).limit(1).all()) > 0:
-        print 'Posts table is not empty - skipping'
+        print('Posts table is not empty - skipping')
         return
     else:
-        print '\n\nPopulating posts table...'
+        print('\n\nPopulating posts table...')
 
-    print 'Loading file into memory: ', data_json_path
+    print(f'Loading file into memory: {data_json_path}')
     with open(data_json_path) as file:
         data = json.load(file)
     progress_indicator = Progress_indicator(len(data))
@@ -549,8 +547,8 @@ def populate_posts(db, data_json_path):
             for post in thread:
                 splitted = post.split('~')
                 if len(splitted) != 3:
-                    print 'Problem with delimiter ~ with post ', post
-                    raise
+                    print(f'Problem with delimiter ~ with post {post}')
+                    raise RuntimeError(f'Problem with delimiter ~ with post {post}')
                 url = splitted[0]
                 original_post = splitted[1]
                 lemmatized_post = splitted[2]
@@ -583,7 +581,7 @@ def create_csv_for_analysis(db):
         symptom_names = []
         for symptom in db.query(Symptom).all():
             symptom_names.append(symptom.name.encode("utf-8"))
-        print [''] + drug_names + symptom_names
+        print([''] + drug_names + symptom_names)
         csv_writer.writerow([''] + drug_names + symptom_names)
         for drug in drug_names:
             relevances = []
@@ -601,7 +599,7 @@ def create_csv_for_analysis(db):
             for symptom2 in symptom_names:
                 val = revmap[symptom2] if symptom2 in revmap else 'NA'.encode("utf-8")
                 relevances.append(val)
-            print [drug] + relevances
+            print([drug] + relevances)
             csv_writer.writerow([drug] + relevances)
         for symptom in symptom_names:
             relevances = []
@@ -619,7 +617,7 @@ def create_csv_for_analysis(db):
             for symptom2 in symptom_names:
                 val = revmap[symptom2] if symptom2 in revmap else 'NA'.encode("utf-8")
                 relevances.append(val)
-            print [symptom] + relevances
+            print([symptom] + relevances)
             csv_writer.writerow([symptom] + relevances)
 
 
@@ -634,7 +632,7 @@ if __name__ == "__main__":
 
         initialize_db()
 
-        raw_input("We will populate any tables which are empty, then we will create indexes. Press enter to continue.")
+        input("We will populate any tables which are empty, then we will create indexes. Press enter to continue.")
 
         # Posts must be populated first
         populate_posts(session, data_json_path)

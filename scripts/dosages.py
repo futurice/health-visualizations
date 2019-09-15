@@ -78,10 +78,10 @@ class Dosages:
         from scripts import associations
 
         if len(db.query(Bridge_Dosage_Quote).limit(1).all()) > 0:
-            print 'Bridge_Dosage_Quotes table is not empty - skipping'
+            print('Bridge_Dosage_Quotes table is not empty - skipping')
             return
         else:
-            print '\n\nPopulating Bridge_Dosage_Quotes table...'
+            print('\n\nPopulating Bridge_Dosage_Quotes table...')
 
         self.drug_dosages = dict()
 
@@ -142,7 +142,7 @@ class Dosages:
             flag_modified(drug, "data")
         db.commit()
 
-        print "Dosages done."
+        print("Dosages done.")
 
 if __name__ == "__main__":
     pass

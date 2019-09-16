@@ -1,4 +1,5 @@
 GRANT ALL ON SCHEMA public TO PUBLIC;
+GRANT CONNECT ON DATABASE laaketutka TO laaketutka_read_only;
 GRANT SELECT ON TABLE public.bridge_dosage_quotes TO laaketutka_read_only;
 GRANT SELECT ON SEQUENCE public.bridge_dosage_quotes_id_seq TO laaketutka_read_only;
 GRANT SELECT ON TABLE public.bridge_drug_posts TO laaketutka_read_only;

@@ -3,3 +3,4 @@
 flask/*
 associations_object
 .DS_Store
+venv/

@@ -49,6 +49,12 @@ sudo apt install python3-psycopg2 libpq-dev
 pip install -r requirements.txt -r requirements_dev.txt
 ```
 
+### Run directly
+
+```bash
+gunicorn --config gunicorn_config.py wsgi:app
+```
+
 ### Run in Docker
 
 ```bash

@@ -8,7 +8,7 @@ The database is only read from, never written to, so you can create it locally a
     * `CREATE USER laaketutka_read_only PASSWORD <password>;`
     * `GRANT laaketutka_read_only TO master;`
     * `CREATE DATABASE laaketutka OWNER master;`
-    * ´REVOKE ALL ON DATABASE laaketutka FROM public;´
+    * `REVOKE ALL ON DATABASE laaketutka FROM public;`
 * Upload contents onto the new database
     * `pg_restore --format=directory --jobs 4 --host=<host> --port=5432 --username=master --dbname=laaketutka laaketutka.dump`
     * insert password
@@ -25,3 +25,5 @@ The database is only read from, never written to, so you can create it locally a
 * Configure backend to use the new database
 * Test that everything works
 * Remove the old database if necessary
+
+You can find the production and staging AWS DB host name and credentials from the Futurice password manager (P-Chilicorn-Laaketutka vault).

@@ -1,4 +1,4 @@
-Flask==2.2.2
+Flask==2.3.2
 psycopg2==2.9.5
 sqlalchemy==1.3.24
 Flask-Caching==2.0.1
